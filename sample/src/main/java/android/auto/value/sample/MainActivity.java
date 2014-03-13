@@ -1,8 +1,9 @@
 package android.auto.value.sample;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Toast;
+import android.view.View;
 
 public class MainActivity extends Activity {
 
@@ -10,7 +11,12 @@ public class MainActivity extends Activity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
-    Person person = Person.create("Frankie", 123);
-    Toast.makeText(this, person.name(), Toast.LENGTH_SHORT).show();
+    findViewById(R.id.click_me).setOnClickListener(new View.OnClickListener() {
+      @Override public void onClick(View v) {
+        Intent detailIntent = new Intent(MainActivity.this, DetailActivity.class);
+        detailIntent.putExtra("Person", SampleData.BOB);
+        startActivity(detailIntent);
+      }
+    });
   }
 }
