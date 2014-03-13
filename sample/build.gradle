@@ -1,0 +1,19 @@
+apply plugin: 'android'
+apply plugin: 'android-apt'
+
+android {
+  compileSdkVersion 18
+  buildToolsVersion "19.0.1"
+
+  defaultConfig {
+    minSdkVersion 14
+    targetSdkVersion 16
+    versionCode 1
+    versionName "1.0"
+  }
+}
+
+dependencies {
+  compile project(':android-auto-value')
+  apt project(':android-auto-value-processor')
+}

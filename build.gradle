@@ -1,0 +1,26 @@
+subprojects {
+  buildscript {
+    repositories {
+      mavenCentral()
+    }
+    dependencies {
+      classpath 'com.android.tools.build:gradle:0.9.+'
+      classpath 'com.neenbedankt.gradle.plugins:android-apt:1.2'
+    }
+  }
+
+  repositories {
+    mavenCentral()
+    maven {
+      url "https://oss.sonatype.org/content/repositories/snapshots/"
+    }
+    mavenLocal()
+  }
+
+  project.group = 'com.github.frankiesardo'
+}
+
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '1.10'
+}
