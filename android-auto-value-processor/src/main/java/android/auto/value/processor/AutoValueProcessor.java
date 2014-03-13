@@ -255,6 +255,32 @@ public class AutoValueProcessor extends AbstractProcessor {
       // serialVersionUID
       "$[serialVersionUID?\n\n  private static final long serialVersionUID = $[serialVersionUID];]",
 
+      // parcelable
+      "$[parcelable?\n\n",
+      "  public static final android.os.Parcelable.Creator<$[origclass]> CREATOR = new android.os.Parcelable.Creator<$[origclass]>() {",
+      "    @Override public $[origclass] createFromParcel(android.os.Parcel in) {",
+      "      return new $[subclass](in);",
+      "    }",
+      "    @Override public $[origclass][] newArray(int size) {",
+      "      return new $[origclass][size];",
+      "    }",
+      "  };",
+      "",
+      "  private final static java.lang.ClassLoader CL = $[subclass].class.getClassLoader();",
+      "",
+      "  private $[subclass](android.os.Parcel in) {",
+      "    this(\n      $[props:p|,\n      |($[p.castType]) in.readValue(CL)]);",
+      "  }",
+      "",
+      "  @Override public void writeToParcel(android.os.Parcel dest, int flags) {",
+      "$[props:p||    dest.writeValue($[p]);\n]",
+      "  }",
+      "",
+      "  @Override public int describeContents() {",
+      "    return 0;",
+      "  }",
+      "]",
+
       "}"
       // CHECKSTYLE:ON
   );
@@ -282,6 +308,26 @@ public class AutoValueProcessor extends AbstractProcessor {
 
     public String type() {
       return type;
+    }
+
+    // That wouldn't be necessary if we supported Java 7+. Oh well.
+    public String castType() {
+      return primitive() ? box(method.getReturnType().getKind()) : type();
+    }
+
+    private String box(TypeKind kind) {
+      switch(kind) {
+        case BOOLEAN: return "Boolean";
+        case BYTE: return "Byte";
+        case SHORT: return "Short";
+        case INT: return "Integer";
+        case LONG: return "Long";
+        case CHAR: return "Character";
+        case FLOAT: return "Float";
+        case DOUBLE: return "Double";
+        default: throw new RuntimeException("Found a new Primitive type on the Java platform. "
+            + "Go ahead and claim " + kind + " yours");
+      }
     }
 
     public boolean primitive() {
@@ -502,6 +548,9 @@ public class AutoValueProcessor extends AbstractProcessor {
     eclipseHack().reorderProperties(props);
     vars.put("props", props);
     vars.put("serialVersionUID", getSerialVersionUID(type));
+
+    TypeMirror parcelable = getTypeMirror("android.os.Parcelable");
+    vars.put("parcelable", processingEnv.getTypeUtils().isAssignable(type.asType(), parcelable));
   }
 
   private Set<TypeMirror> returnTypesOf(List<ExecutableElement> methods) {
@@ -569,7 +618,7 @@ public class AutoValueProcessor extends AbstractProcessor {
     boolean errors = false;
     for (ExecutableElement method : methods) {
       if (method.getModifiers().contains(Modifier.ABSTRACT)
-          && !isToStringOrEqualsOrHashCode(method)) {
+          && !isToStringOrEqualsOrHashCode(method) && !isFromParcelable(method)) {
         if (method.getParameters().isEmpty() && method.getReturnType().getKind() != TypeKind.VOID) {
           if (isReferenceArrayType(method.getReturnType())) {
             reportError("An @AutoValue class cannot define an array-valued property unless it is "
@@ -588,6 +637,17 @@ public class AutoValueProcessor extends AbstractProcessor {
       throw new CompileException();
     }
     return toImplement;
+  }
+
+  private boolean isFromParcelable(ExecutableElement method) {
+    String name = method.getSimpleName().toString();
+    boolean isDescribeContents = name.equals("describeContents") && method.getParameters().isEmpty()
+        && method.getReturnType().toString().equals("int");
+    boolean isWriteToParcel = name.equals("writeToParcel") && method.getParameters().size() == 2
+        && method.getReturnType().toString().equals("void")
+        && method.getParameters().get(0).asType().toString().equals("android.os.Parcel")
+        && method.getParameters().get(1).asType().toString().equals("int");
+    return isDescribeContents || isWriteToParcel;
   }
 
   private static boolean isReferenceArrayType(TypeMirror type) {
@@ -653,7 +713,11 @@ public class AutoValueProcessor extends AbstractProcessor {
   }
 
   private TypeMirror getTypeMirror(Class<?> c) {
-    return processingEnv.getElementUtils().getTypeElement(c.getName()).asType();
+    return getTypeMirror(c.getName());
+  }
+
+  private TypeMirror getTypeMirror(String className) {
+    return processingEnv.getElementUtils().getTypeElement(className).asType();
   }
 
   // Why does TypeParameterElement.toString() not return this? Grrr.
