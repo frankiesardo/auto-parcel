@@ -58,6 +58,9 @@ buildscript {
   }
 }
 
+apply plugin: 'android'
+apply plugin: 'android-apt'
+
 dependencies {
   compile 'com.github.frankiesardo:android-auto-value:+'
   apt 'com.github.frankiesardo:android-auto-value-processor:+'

@@ -1,3 +1,2 @@
-include ':sample'
-include 'android-auto-value', 'android-auto-value-processor'
+include 'android-auto-value', 'android-auto-value-processor', ':sample'
 rootProject.name = 'android-auto-value-parent'
