@@ -28,7 +28,7 @@ Fine, how do I use it?
 
 ```java
 @AutoValue
-class SomeModel implements Parcelable {
+abstract class SomeModel implements Parcelable {
   abstract String name();
   abstract List<SomeSubModel> subModels();
   abstract Map<String, OtherSubModel> modelsMap();
