@@ -2,7 +2,7 @@ apply plugin: 'android'
 apply plugin: 'android-apt'
 
 android {
-  compileSdkVersion 18
+  compileSdkVersion 19
   buildToolsVersion "19.0.1"
 
   defaultConfig {
