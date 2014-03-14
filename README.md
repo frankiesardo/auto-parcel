@@ -34,7 +34,7 @@ abstract class SomeModel implements Parcelable {
   abstract Map<String, OtherSubModel> modelsMap();
 
   static SomeModel create(String name, List<SomeSubModel> subModels, Map<String, OtherSubModel> modelsMap) {
-    return AutoValue_SomeModel(name, subModels, modelsMap);
+    return new AutoValue_SomeModel(name, subModels, modelsMap);
   }
 }
 ```
