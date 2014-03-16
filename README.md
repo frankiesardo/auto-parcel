@@ -47,7 +47,7 @@ Sounds great, where can I download it?
 
 The easy way is to use Gradle.
 
-```
+```groovy
 buildscript {
   repositories {
     mavenCentral()
