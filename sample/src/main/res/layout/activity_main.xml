@@ -6,7 +6,7 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     android:paddingBottom="@dimen/activity_vertical_margin"
-    tools:context="android.auto.value.sample.MainActivity">
+    tools:context="auto.parcel.sample.MainActivity">
 
   <Button
       android:id="@+id/click_me"

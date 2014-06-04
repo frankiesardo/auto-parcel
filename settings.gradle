@@ -1,2 +1,2 @@
-include 'android-auto-value', 'android-auto-value-processor', ':sample'
-rootProject.name = 'android-auto-value-parent'
+include 'auto-parcel', 'auto-parcel-processor', ':sample'
+rootProject.name = 'auto-parcel-parent'
