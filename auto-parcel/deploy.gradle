@@ -1,7 +1,7 @@
 apply plugin: 'maven'
 apply plugin: 'signing'
 
-version = "0.2-SNAPSHOT"
+version = "0.2"
 
 def isReleaseBuild() {
   !version.contains("SNAPSHOT")
@@ -16,9 +16,6 @@ if (isReleaseBuild()) {
   println "DEBUG BUILD $version"
   sonatypeRepositoryUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
 }
-
-//def username = project.hasProperty("nexusUsername") ? project.property("nexusUsername") : ""
-//def password = project.hasProperty("nexusPassword") ? project.property("nexusPassword") : ""
 
 def username = project.getProperty("nexusUsername") ?: ""
 def password = project.getProperty("nexusPassword") ?: ""
