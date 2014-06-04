@@ -7,7 +7,7 @@ Why AutoValue?
 --------
 
 Because it's awesome.
-I can't explain it better than [this](https://github.com/google/auto/tree/master/value).
+I can't explain it better than [that](https://github.com/google/auto/tree/master/value).
 
 Ok then why an Android port?
 --------
