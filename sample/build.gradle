@@ -14,6 +14,6 @@ android {
 }
 
 dependencies {
-  compile project(':android-auto-value')
-  apt project(':android-auto-value-processor')
+  compile project(':auto-parcel')
+  apt project(':auto-parcel-processor')
 }

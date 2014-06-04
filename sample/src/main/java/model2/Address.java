@@ -1,14 +1,14 @@
 package model2;
 
-import android.auto.value.AutoValue;
+import auto.parcel.AutoParcel;
 import android.os.Parcelable;
 
-@AutoValue
+@AutoParcel
 public abstract class Address implements Parcelable {
   public abstract double[] coordinates();
   public abstract String cityName();
 
   public static Address create(double[] coordinates, String cityName) {
-    return new AutoValue_Address(coordinates, cityName);
+    return new AutoParcel_Address(coordinates, cityName);
   }
 }
