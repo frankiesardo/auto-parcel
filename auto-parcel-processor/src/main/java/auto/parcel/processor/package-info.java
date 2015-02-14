@@ -13,6 +13,6 @@
  */
 /**
  * This package contains the annotation processor that implements the
- * {@link com.google.auto.value.AutoParcel} API.
+ * {@link auto.parcel.AutoParcel} API.
  */
 package auto.parcel.processor;

@@ -159,7 +159,7 @@ final class TypeSimplifier {
 
   // The actual type parameters of the given type.
   // If we have @AutoParcel abstract class Foo<T extends Something> then the subclass will be
-  // final class AutoValue_Foo<T extends Something> extends Foo<T>.
+  // final class AutoParcel_Foo<T extends Something> extends Foo<T>.
   // <T extends Something> is the formal type parameter list and
   // <T> is the actual type parameter list, which is what this method returns.
   static String actualTypeParametersString(TypeElement type) {

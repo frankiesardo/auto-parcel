@@ -50,7 +50,7 @@ import javax.tools.Diagnostic;
  * <p>
  * This is obviously a giant hack, and the right thing would be for the Eclipse compiler to be
  * fixed. The approach here works, but is vulnerable to future changes in the Eclipse API. If
- * {@code @AutoParcel} constructor calls like {@code new AutoValue_Foo(...)} suddenly start being
+ * {@code @AutoParcel} constructor calls like {@code new AutoParcel_Foo(...)} suddenly start being
  * redlined in a new Eclipse version then the likely cause is that the APIs have changed and this
  * hack will need to be updated to track the change.
  * <p>

@@ -19,13 +19,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies that <a href="https://github.com/google/auto/tree/master/value">AutoParcel</a> should
+ * Specifies that <a href="https://github.com/frankiesardo/auto-parcel">AutoParcel</a> should
  * generate an implementation class for the annotated abstract class, implementing the standard
  * {@link Object} methods like {@link Object#equals equals} to have conventional value semantics. A
  * simple example: <pre>
  * <p/>
  *   &#64;AutoParcel
- *   abstract class Person {
+ *   abstract class Person implements Parcelable {
  *     static Person create(String name, int id) {
  *       return new AutoParcel_Person(name, id);
  *     }
@@ -36,7 +36,7 @@ import java.lang.annotation.Target;
  *
  * @author Éamonn McManus
  * @author Kevin Bourrillion
- * @see <a href="https://github.com/google/auto/tree/master/value">AutoParcel User's Guide</a>
+ * @see <a href="https://github.com/frankiesardo/auto-parcel">AutoParcel User's Guide</a>
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)

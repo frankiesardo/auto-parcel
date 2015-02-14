@@ -76,8 +76,8 @@ class GwtSerialization {
    * {@code @GwtCompatible} annotation can come from any package.
    *
    * <p>If the type is com.example.Foo then the generated AutoParcel subclass is
-   * com.example.AutoValue_Foo and the GWT serializer is
-   * com.example.AutoValue_Foo_CustomFieldSerializer.
+   * com.example.AutoParcel_Foo and the GWT serializer is
+   * com.example.AutoParcel_Foo_CustomFieldSerializer.
    *
    * @param autoVars the template variables defined for this type.
    */

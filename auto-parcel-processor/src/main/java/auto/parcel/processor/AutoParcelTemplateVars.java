@@ -52,7 +52,7 @@ class AutoParcelTemplateVars extends TemplateVars {
               "#end\n" +
               "\n" +
               "${gwtCompatibleAnnotation}\n" +
-              "@${generated}(\"com.google.auto.value.processor.AutoParcelProcessor\")\n" +
+              "@${generated}(\"auto.parcel.processor.AutoParcelProcessor\")\n" +
               "final class $subclass$formalTypes extends $origClass$actualTypes {\n" +
               "\n" +
               "## Fields\n" +

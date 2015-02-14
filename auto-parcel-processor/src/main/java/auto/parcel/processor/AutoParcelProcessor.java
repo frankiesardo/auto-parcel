@@ -395,7 +395,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
       errorReporter.abortWithError(
           "@" + AutoParcel.class.getName() + " only applies to classes", type);
     }
-    if (ancestorIsAutoValue(type)) {
+    if (ancestorIsAutoParcel(type)) {
       errorReporter.abortWithError("One @AutoParcel class may not extend another", type);
     }
     if (implementsAnnotation(type)) {
@@ -614,7 +614,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
           // This could reasonably be an error, were it not for an Eclipse bug in
           // ElementUtils.override that sometimes fails to recognize that one method overrides
           // another, and therefore leaves us with both an abstract method and the subclass method
-          // that overrides it. This shows up in AutoValueTest.LukesBase for example.
+          // that overrides it. This shows up in AutoParcelTest.LukesBase for example.
           errorReporter.reportWarning("@AutoParcel classes cannot have abstract methods other than"
               + " property getters and Builder converters", method);
         }
@@ -647,7 +647,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
     }
   }
 
-  private boolean ancestorIsAutoValue(TypeElement type) {
+  private boolean ancestorIsAutoParcel(TypeElement type) {
     while (true) {
       TypeMirror parentMirror = type.getSuperclass();
       if (parentMirror.getKind() == TypeKind.NONE) {
