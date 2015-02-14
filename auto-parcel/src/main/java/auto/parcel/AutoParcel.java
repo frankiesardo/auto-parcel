@@ -19,9 +19,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies that <a href="http://goo.gl/Ter394">AutoParcel</a> should generate an implementation
- * class for the annotated abstract class, implementing the standard {@link Object} methods like
- * {@link Object#equals equals} to have conventional value semantics. A simple example: <pre>
+ * Specifies that <a href="https://github.com/google/auto/tree/master/value">AutoParcel</a> should
+ * generate an implementation class for the annotated abstract class, implementing the standard
+ * {@link Object} methods like {@link Object#equals equals} to have conventional value semantics. A
+ * simple example: <pre>
  *
  *   &#64;AutoParcel
  *   abstract class Person {
@@ -33,20 +34,55 @@ import java.lang.annotation.Target;
  *     abstract int id();
  *   }</pre>
  *
+ * @see <a href="https://github.com/google/auto/tree/master/value">AutoParcel User's Guide</a>
+ *
+ *
  * @author Éamonn McManus
  * @author Kevin Bourrillion
- * @see <a href="http://goo.gl/Ter394">AutoParcel User's Guide</a>
  */
-@Retention(RetentionPolicy.SOURCE) @Target(ElementType.TYPE)
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
 public @interface AutoParcel {
-  /**
-   * Specifies whether the generated class should cache each instance's {@link Object#hashCode
-   * hashCode} value in a field once it is first computed. <b>Note:</b> most classes should have
-   * no need of this behavior and should omit this parameter entirely. Use only if certain of its
-   * performance benefit to your application.
-   *
-   * <p><b>Warning:</b> while using mutable field types is strongly discouraged in general, using
-   * this feature makes it <i>especially</i> dangerous.
-   */
-  boolean cacheHashCode() default false;
+
+    /**
+     * Specifies that AutoParcel should generate an implementation of the annotated class or interface,
+     * to serve as a <i>builder</i> for the value-type class it is nested within. As a simple example,
+     * here is an alternative way to write the {@code Person} class mentioned in the {@link AutoParcel}
+     * example: <pre>
+     *
+     *   &#64;AutoParcel
+     *   abstract class Person {
+     *     static Builder builder() {
+     *       return new AutoParcel_Person.Builder();
+     *     }
+     *
+     *     abstract String name();
+     *     abstract int id();
+     *
+     *     &#64;AutoParcel.Builder
+     *     interface Builder {
+     *       Builder name(String x);
+     *       Builder id(int x);
+     *       Person build();
+     *     }
+     *   }</pre>
+     *
+     * <p><b>This API is provisional and subject to change.</b></p>
+     *
+     *
+     * @author Éamonn McManus
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @Target(ElementType.TYPE)
+    public @interface Builder {}
+
+    /**
+     * Specifies that the annotated method is a validation method. The method should be a non-private
+     * no-argument method in an AutoParcel class. It will be called by the {@code build()} method of
+     * the {@link Builder @AutoParcel.Builder} implementation, immediately after constructing the new
+     * object. It can throw an exception if the new object fails validation checks.
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @Target(ElementType.METHOD)
+    public @interface Validate {}
 }

@@ -17,24 +17,36 @@ package auto.parcel.processor;
 
 import auto.parcel.AutoParcel;
 import com.google.auto.service.AutoService;
+import com.google.common.base.Functions;
+import com.google.common.base.Joiner;
+import com.google.common.base.Optional;
+import com.google.common.base.Throwables;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import java.beans.Introspector;
 import java.io.IOException;
 import java.io.Serializable;
 import java.io.Writer;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
+
+import javax.annotation.Generated;
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedOptions;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -57,19 +69,17 @@ import javax.tools.JavaFileObject;
  * Javac annotation processor (compiler plugin) for value types; user code never references this
  * class.
  *
- * @see auto.parcel.AutoParcel
  * @author Éamonn McManus
+ * @see auto.parcel.AutoParcel
  */
 @AutoService(Processor.class)
-@SupportedOptions(EclipseHack.ENABLING_OPTION)
 public class AutoParcelProcessor extends AbstractProcessor {
-  private static final boolean SILENT = true;
-
-  public AutoParcelProcessor() {}
+  public AutoParcelProcessor() {
+  }
 
   @Override
   public Set<String> getSupportedAnnotationTypes() {
-    return Collections.singleton(AutoParcel.class.getName());
+    return ImmutableSet.of(AutoParcel.class.getName());
   }
 
   @Override
@@ -77,63 +87,64 @@ public class AutoParcelProcessor extends AbstractProcessor {
     return SourceVersion.latestSupported();
   }
 
-  private void note(String msg) {
-    if (!SILENT) {
-      processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, msg);
-    }
-  }
-
-  @SuppressWarnings("serial")
-  // CHECKSTYLE:OFF:WhitespaceAround
-  private static class CompileException extends Exception {}
-  // CHECKSTYLE:ON
+  private ErrorReporter errorReporter;
 
   /**
-   * Issue a compilation error. This method does not throw an exception, since we want to
-   * continue processing and perhaps report other errors. It is a good idea to introduce a
-   * test case in CompilationErrorsTest for any new call to reportError(...) to ensure that we
-   * continue correctly after an error.
+   * Qualified names of {@code @AutoParcel} classes that we attempted to process but had to abandon
+   * because we needed other types that they referenced and those other types were missing.
    */
-  private void reportError(String msg, Element e) {
-    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, msg, e);
-  }
+  private final List<String> deferredTypeNames = new ArrayList<String>();
 
-  /**
-   * Issue a compilation error and abandon the processing of this class. This does not prevent
-   * the processing of other classes.
-   */
-  private void abortWithError(String msg, Element e) throws CompileException {
-    reportError(msg, e);
-    throw new CompileException();
+  @Override
+  public synchronized void init(ProcessingEnvironment processingEnv) {
+    super.init(processingEnv);
+    errorReporter = new ErrorReporter(processingEnv);
   }
 
   @Override
   public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-    boolean claimed = (annotations.size() == 1
-        && annotations.iterator().next().getQualifiedName().toString().equals(
-            AutoParcel.class.getName()));
-    if (claimed) {
-      process(roundEnv);
-      return true;
-    } else {
+    List<TypeElement> deferredTypes = new ArrayList<TypeElement>();
+    for (String deferred : deferredTypeNames) {
+      deferredTypes.add(processingEnv.getElementUtils().getTypeElement(deferred));
+    }
+    if (roundEnv.processingOver()) {
+      // This means that the previous round didn't generate any new sources, so we can't have found
+      // any new instances of @AutoParcel; and we can't have any new types that are the reason a type
+      // was in deferredTypes.
+      for (TypeElement type : deferredTypes) {
+        errorReporter.reportError("Did not generate @AutoParcel class for " + type.getQualifiedName()
+            + " because it references undefined types", type);
+      }
       return false;
     }
-  }
-
-  private void process(RoundEnvironment roundEnv) {
     Collection<? extends Element> annotatedElements =
         roundEnv.getElementsAnnotatedWith(AutoParcel.class);
-    Collection<? extends TypeElement> types = ElementFilter.typesIn(annotatedElements);
+    List<TypeElement> types = new ImmutableList.Builder<TypeElement>()
+        .addAll(deferredTypes)
+        .addAll(ElementFilter.typesIn(annotatedElements))
+        .build();
+    deferredTypeNames.clear();
     for (TypeElement type : types) {
       try {
         processType(type);
-      } catch (CompileException e) {
-        // We abandoned this type, but continue with the next.
+      } catch (AbortProcessingException e) {
+        // We abandoned this type; continue with the next.
+      } catch (MissingTypeException e) {
+        // We abandoned this type, but only because we needed another type that it references and
+        // that other type was missing. It is possible that the missing type will be generated by
+        // further annotation processing, so we will try again on the next round (perhaps failing
+        // again and adding it back to the list). We save the name of the @AutoParcel type rather
+        // than its TypeElement because it is not guaranteed that it will be represented by
+        // the same TypeElement on the next round.
+        deferredTypeNames.add(type.getQualifiedName().toString());
       } catch (RuntimeException e) {
         // Don't propagate this exception, which will confusingly crash the compiler.
-        reportError("@AutoParcel processor threw an exception: " + e, type);
+        // Instead, report a compiler error with the stack trace.
+        String trace = Throwables.getStackTraceAsString(e);
+        errorReporter.reportError("@AutoParcel processor threw an exception: " + trace, type);
       }
     }
+    return false;  // never claim annotation, because who knows what other processors want?
   }
 
   private String generatedClassName(TypeElement type, String prefix) {
@@ -151,194 +162,133 @@ public class AutoParcelProcessor extends AbstractProcessor {
     return generatedClassName(type, "AutoParcel_");
   }
 
-  private static String simpleNameOf(String s) {
-    if (s.contains(".")) {
-      return s.substring(s.lastIndexOf('.') + 1);
-    } else {
-      return s;
-    }
-  }
-
-  // Return the name of the class, including any enclosing classes but not the package.
-  private static String classNameOf(TypeElement type) {
-    String name = type.getQualifiedName().toString();
-    String pkgName = TypeSimplifier.packageNameOf(type);
-    if (!pkgName.isEmpty()) {
-      return name.substring(pkgName.length() + 1);
-    } else {
-      return name;
-    }
-  }
-
-  // This is just because I hate typing    "...\n" +   all the time.
-  private static String concatLines(String... lines) {
-    StringBuilder sb = new StringBuilder();
-    for (String line : lines) {
-      sb.append(line).append("\n");
-    }
-    return sb.toString();
-  }
-
-  // The code below uses a small templating language. This is not hugely readable, but is much more
-  // so than sb.append(this).append(that) with ifs and fors scattered around everywhere.
-  // See the Template class for an explanation of the various constructs.
-  private static final String TEMPLATE_STRING = concatLines(
-      // CHECKSTYLE:OFF:OperatorWrap
-      // Package declaration
-      "$[pkg?package $[pkg];\n]",
-
-      // Imports
-      "$[imports:i||import $[i];\n]",
-
-      // Class declaration
-      "final class $[subclass]$[formaltypes] extends $[origclass]$[actualtypes] {",
-
-      // Fields
-      "$[props:p||  private final $[p.type] $[p];\n]",
-
-      // Constructor
-      "  $[subclass](\n      $[props:p|,\n      |$[p.type] $[p]]) {",
-      "$[props:p|\n|$[p.primitive!$[p.nullable!    if ($[p] == null) {",
-      "      throw new NullPointerException(\"Null $[p]\");",
-      "    }",
-      "]]" +
-      "    this.$[p] = $[p];]",
-      "  }",
-
-      // Property getters
-      "$[props:p|\n|\n  @Override",
-      "  $[p.access]$[p.type] $[p]() {",
-      "    return $[p.array?[$[p.nullable?$[p] == null ? null : ]$[p].clone()][$[p]]];",
-      "  }]",
-
-      // toString()
-      "$[toString?\n  @Override",
-      "  public String toString() {",
-      "    return \"$[simpleclassname]{\"$[props?\n        + \"]" +
-      "$[props:p|\n        + \", |" +
-                "$[p]=\" + $[p.array?[$[Arrays].toString($[p])][$[p]]]]",
-      "        + \"}\";",
-      "  }]",
-
-      // equals(Object)
-      "$[equals?\n  @Override",
-      "  public boolean equals(Object o) {",
-      "    if (o == this) {",
-      "      return true;",
-      "    }",
-      "    if (o instanceof $[origclass]) {",
-      "      $[origclass]$[wildcardtypes] that = ($[origclass]$[wildcardtypes]) o;",
-      "      return $[props!true]" +
-                   "$[props:p|\n          && |($[p.equalsThatExpression])];",
-      "    }",
-      "    return false;",
-      "  }]",
-
-      // hashCode()
-      "$[hashCode?",
-      "$[cacheHashCode?  private transient int hashCode;\n\n]" +
-
-      "  @Override",
-      "  public int hashCode() {",
-      "$[cacheHashCode?    if (hashCode != 0) {",
-      "      return hashCode;",
-      "    }\n]" +
-      "    int h = 1;",
-      "$[props:p||" +
-      "    h *= 1000003;",
-      "    h ^= $[p.hashCodeExpression];",
-      "]" +
-      "$[cacheHashCode?    hashCode = h;\n]" +
-      "    return h;",
-      "  }]" +
-
-      // serialVersionUID
-      "$[serialVersionUID?\n\n  private static final long serialVersionUID = $[serialVersionUID];]",
-
-      // parcelable
-      "$[parcelable?\n\n",
-      "  public static final android.os.Parcelable.Creator<$[origclass]> CREATOR = new android.os.Parcelable.Creator<$[origclass]>() {",
-      "    @Override public $[origclass] createFromParcel(android.os.Parcel in) {",
-      "      return new $[subclass](in);",
-      "    }",
-      "    @Override public $[origclass][] newArray(int size) {",
-      "      return new $[origclass][size];",
-      "    }",
-      "  };",
-      "",
-      "  private final static java.lang.ClassLoader CL = $[subclass].class.getClassLoader();",
-      "",
-      "  private $[subclass](android.os.Parcel in) {",
-      "    this(\n      $[props:p|,\n      |($[p.castType]) in.readValue(CL)]);",
-      "  }",
-      "",
-      "  @Override public void writeToParcel(android.os.Parcel dest, int flags) {",
-      "$[props:p||    dest.writeValue($[p]);\n]",
-      "  }",
-      "",
-      "  @Override public int describeContents() {",
-      "    return 0;",
-      "  }",
-      "]",
-
-      "}"
-      // CHECKSTYLE:ON
-  );
-  private static final Template template = Template.compile(TEMPLATE_STRING);
-
-  static class Property {
+  /**
+   * A property of an {@code @AutoParcel} class, defined by one of its abstract methods.
+   * An instance of this class is made available to the Velocity template engine for
+   * each property. The public methods of this class define JavaBeans-style properties
+   * that are accessible from templates. For example {@link #getType()} means we can
+   * write {@code $p.type} for a Velocity variable {@code $p} that is a {@code Property}.
+   */
+  public static class Property {
+    private final String name;
+    private final String identifier;
     private final ExecutableElement method;
     private final String type;
-    private final Map<String, Object> vars;
+    private final ImmutableList<String> annotations;
 
-    Property(ExecutableElement method, String type, Map<String, Object> vars) {
+    Property(
+        String name,
+        String identifier,
+        ExecutableElement method,
+        String type,
+        TypeSimplifier typeSimplifier) {
+      this.name = name;
+      this.identifier = identifier;
       this.method = method;
       this.type = type;
-      this.vars = vars;
+      this.annotations = buildAnnotations(typeSimplifier);
     }
 
+    private ImmutableList<String> buildAnnotations(TypeSimplifier typeSimplifier) {
+      ImmutableList.Builder<String> builder = ImmutableList.builder();
+
+      for (AnnotationMirror annotationMirror : method.getAnnotationMirrors()) {
+        TypeElement annotationElement =
+            (TypeElement) annotationMirror.getAnnotationType().asElement();
+        if (annotationElement.getQualifiedName().toString().equals(Override.class.getName())) {
+          // Don't copy @Override if present, since we will be adding our own @Override in the
+          // implementation.
+          continue;
+        }
+        // TODO(user): we should import this type if it is not already imported
+        AnnotationOutput annotationOutput = new AnnotationOutput(typeSimplifier);
+        builder.add(annotationOutput.sourceFormForAnnotation(annotationMirror));
+      }
+
+      return builder.build();
+    }
+
+    /**
+     * Returns the name of the property as it should be used when declaring identifiers (fields and
+     * parameters). If the original getter method was {@code foo()} then this will be {@code foo}.
+     * If it was {@code getFoo()} then it will be {@code foo}. If it was {@code getPackage()} then
+     * it will be something like {@code package0}, since {@code package} is a reserved word.
+     */
     @Override
     public String toString() {
+      return identifier;
+    }
+
+    /**
+     * Returns the name of the property as it should be used in strings visible to users. This is
+     * usually the same as {@code toString()}, except that if we had to use an identifier like
+     * "package0" because "package" is a reserved word, the name here will be the original
+     * "package".
+     */
+    public String getName() {
+      return name;
+    }
+
+    /**
+     * Returns the name of the getter method for this property as defined by the {@code @AutoParcel}
+     * class. For property {@code foo}, this will be {@code foo} or {@code getFoo} or {@code isFoo}.
+     */
+    public String getGetter() {
       return method.getSimpleName().toString();
     }
 
-    TypeElement owner() {
+    TypeElement getOwner() {
       return (TypeElement) method.getEnclosingElement();
     }
 
-    public String type() {
+    TypeMirror getTypeMirror() {
+      return method.getReturnType();
+    }
+
+    public String getType() {
       return type;
     }
 
-    // That wouldn't be necessary if we supported Java 7+. Oh well.
-    public String castType() {
-      return primitive() ? box(method.getReturnType().getKind()) : type();
+    public TypeKind getKind() {
+      return method.getReturnType().getKind();
+    }
+
+    public String getCastType() {
+      return primitive() ? box(method.getReturnType().getKind()) : getType();
     }
 
     private String box(TypeKind kind) {
-      switch(kind) {
-        case BOOLEAN: return "Boolean";
-        case BYTE: return "Byte";
-        case SHORT: return "Short";
-        case INT: return "Integer";
-        case LONG: return "Long";
-        case CHAR: return "Character";
-        case FLOAT: return "Float";
-        case DOUBLE: return "Double";
-        default: throw new RuntimeException("Found a new Primitive type on the Java platform. "
-            + "Go ahead and claim " + kind + " yours");
-      }
+      switch (kind) {
+        case BOOLEAN:
+          return "Boolean";
+        case BYTE:
+          return "Byte";
+        case SHORT:
+          return "Short";
+        case INT:
+          return "Integer";
+        case LONG:
+          return "Long";
+        case CHAR:
+          return "Character";
+        case FLOAT:
+          return "Float";
+        case DOUBLE:
+          return "Double";
+        default:
+          throw new RuntimeException("Unknown primitive of kind " + kind);
+        }
     }
 
     public boolean primitive() {
       return method.getReturnType().getKind().isPrimitive();
     }
 
-    public boolean array() {
-      return method.getReturnType().getKind() == TypeKind.ARRAY;
+    public List<String> getAnnotations() {
+      return annotations;
     }
 
-    public boolean nullable() {
+    public boolean isNullable() {
       for (AnnotationMirror annotationMirror : method.getAnnotationMirrors()) {
         String name = annotationMirror.getAnnotationType().asElement().getSimpleName().toString();
         if (name.equals("Nullable")) {
@@ -348,88 +298,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
       return false;
     }
 
-    private static final Template PRIMITIVE_EQUALS_TEMPLATE =
-        Template.compile("this.$[p] == that.$[p]()");
-    private static final Template ARRAY_EQUALS_TEMPLATE =
-        Template.compile("$[Arrays].equals(this.$[p], "
-            + "(that instanceof $[subclass]) ? (($[subclass]) that).$[p] : that.$[p]())");
-    private static final Template FLOAT_EQUALS_TEMPLATE = Template.compile(
-        "Float.floatToIntBits(this.$[p]) == Float.floatToIntBits(that.$[p]())");
-    private static final Template DOUBLE_EQUALS_TEMPLATE = Template.compile(
-        "Double.doubleToLongBits(this.$[p]) == Double.doubleToLongBits(that.$[p]())");
-    // CHECKSTYLE:OFF:OperatorWrap
-    private static final Template OBJECT_EQUALS_TEMPLATE = Template.compile(
-        "$[p.nullable?" +
-          "(this.$[p] == null) ? (that.$[p]() == null) : ]" +
-          "this.$[p].equals(that.$[p]())");
-    // CHECKSTYLE:ON
-
-    /**
-     * A string representing an expression that compares this property with the same property
-     * in another variable called "that" whose type is the class marked {@code @AutoParcel}.
-     */
-    public String equalsThatExpression() {
-      // If the templating language had a case statement we wouldn't need this function, but the
-      // language is unreadable enough as it is.
-      Template template;
-      switch (method.getReturnType().getKind()) {
-        case BYTE:
-        case SHORT:
-        case CHAR:
-        case INT:
-        case LONG:
-        case BOOLEAN:
-          template = PRIMITIVE_EQUALS_TEMPLATE;
-          break;
-        case FLOAT:
-          template = FLOAT_EQUALS_TEMPLATE;
-          break;
-        case DOUBLE:
-          template = DOUBLE_EQUALS_TEMPLATE;
-          break;
-        case ARRAY:
-          template = ARRAY_EQUALS_TEMPLATE;
-          break;
-        default:
-          template = OBJECT_EQUALS_TEMPLATE;
-          break;
-      }
-      Map<String, Object> newVars = new TreeMap<String, Object>(vars);
-      newVars.put("p", this);
-      return template.rewrite(newVars);
-    }
-
-    /**
-     * A string representing an expression that is the hashCode of this property.
-     */
-    public String hashCodeExpression() {
-      switch (method.getReturnType().getKind()) {
-        case BYTE:
-        case SHORT:
-        case CHAR:
-        case INT:
-          return this.toString();
-        case LONG:
-          return "(" + this + " >>> 32) ^ " + this;
-        case FLOAT:
-          return "Float.floatToIntBits(" + this + ")";
-        case DOUBLE:
-          return "(Double.doubleToLongBits(" + this + ") >>> 32) ^ "
-              + "Double.doubleToLongBits(" + this + ")";
-        case BOOLEAN:
-          return this + " ? 1231 : 1237";
-        case ARRAY:
-          return vars.get("Arrays") + ".hashCode(" + this + ")";
-        default:
-          if (nullable()) {
-            return "(" + this + " == null) ? 0 : " + this + ".hashCode()";
-          } else {
-            return this + ".hashCode()";
-          }
-      }
-    }
-
-    public String access() {
+    public String getAccess() {
       Set<Modifier> mods = method.getModifiers();
       if (mods.contains(Modifier.PUBLIC)) {
         return "public ";
@@ -445,16 +314,40 @@ public class AutoParcelProcessor extends AbstractProcessor {
     return type.getSuperclass().getKind() == TypeKind.NONE && type.getKind() == ElementKind.CLASS;
   }
 
-  private static boolean isToStringOrEqualsOrHashCode(ExecutableElement method) {
+  private enum ObjectMethodToOverride {
+    NONE, TO_STRING, EQUALS, HASH_CODE, DESCRIBE_CONTENTS, WRITE_TO_PARCEL
+  }
+
+  private static ObjectMethodToOverride objectMethodToOverride(ExecutableElement method) {
     String name = method.getSimpleName().toString();
-    return ((name.equals("toString") || name.equals("hashCode"))
-              && method.getParameters().isEmpty())
-        || (name.equals("equals") && method.getParameters().size() == 1
-              && method.getParameters().get(0).asType().toString().equals("java.lang.Object"));
+    switch (method.getParameters().size()) {
+      case 0:
+        if (name.equals("toString")) {
+          return ObjectMethodToOverride.TO_STRING;
+        } else if (name.equals("hashCode")) {
+          return ObjectMethodToOverride.HASH_CODE;
+        } else if (name.equals("describeContents")) {
+          return ObjectMethodToOverride.DESCRIBE_CONTENTS;
+        }
+        break;
+      case 1:
+        if (name.equals("equals")
+            && method.getParameters().get(0).asType().toString().equals("java.lang.Object")) {
+          return ObjectMethodToOverride.EQUALS;
+        }
+        break;
+      case 2:
+        if (name.equals("writeToParcel")
+            && method.getParameters().get(0).asType().toString().equals("android.os.Parcelable")
+            && method.getParameters().get(1).asType().toString().equals("int")) {
+          return ObjectMethodToOverride.WRITE_TO_PARCEL;
+        }
+        break;
+    }
+    return ObjectMethodToOverride.NONE;
   }
 
   private void findLocalAndInheritedMethods(TypeElement type, List<ExecutableElement> methods) {
-    note("Looking at methods in " + type);
     Types typeUtils = processingEnv.getTypeUtils();
     Elements elementUtils = processingEnv.getElementUtils();
     for (TypeMirror superInterface : type.getInterfaces()) {
@@ -470,11 +363,10 @@ public class AutoParcelProcessor extends AbstractProcessor {
     // This algorithm is quadratic in the number of methods but it's hard to see how to improve
     // that while still using Elements.overrides.
     List<ExecutableElement> theseMethods = ElementFilter.methodsIn(type.getEnclosedElements());
-    eclipseHack().sortMethodsIfSimulatingEclipse(theseMethods);
     for (ExecutableElement method : theseMethods) {
       if (!method.getModifiers().contains(Modifier.PRIVATE)) {
         boolean alreadySeen = false;
-        for (Iterator<ExecutableElement> methodIter = methods.iterator(); methodIter.hasNext();) {
+        for (Iterator<ExecutableElement> methodIter = methods.iterator(); methodIter.hasNext(); ) {
           ExecutableElement otherMethod = methodIter.next();
           if (elementUtils.overrides(method, otherMethod, type)) {
             methodIter.remove();
@@ -491,70 +383,174 @@ public class AutoParcelProcessor extends AbstractProcessor {
     }
   }
 
-  private void processType(TypeElement type) throws CompileException {
-    AutoParcel autoParcel = type.getAnnotation(AutoParcel.class);
-    if (autoParcel == null) {
+  private void processType(TypeElement type) {
+    AutoParcel autoValue = type.getAnnotation(AutoParcel.class);
+    if (autoValue == null) {
       // This shouldn't happen unless the compilation environment is buggy,
       // but it has happened in the past and can crash the compiler.
-      abortWithError("annotation processor for @AutoParcel was invoked with a type that "
-          + "does not have that annotation; this is probably a compiler bug", type);
+      errorReporter.abortWithError("annotation processor for @AutoParcel was invoked with a type"
+          + " that does not have that annotation; this is probably a compiler bug", type);
     }
     if (type.getKind() != ElementKind.CLASS) {
-      abortWithError("@" + AutoParcel.class.getName() + " only applies to classes", type);
+      errorReporter.abortWithError(
+          "@" + AutoParcel.class.getName() + " only applies to classes", type);
     }
-    if (ancestorIsAndroidAutoParcel(type)) {
-      abortWithError("One @AutoParcel class may not extend another", type);
+    if (ancestorIsAutoValue(type)) {
+      errorReporter.abortWithError("One @AutoParcel class may not extend another", type);
     }
-    Map<String, Object> vars = new TreeMap<String, Object>();
-    vars.put("pkg", TypeSimplifier.packageNameOf(type));
-    vars.put("origclass", classNameOf(type));
-    vars.put("simpleclassname", simpleNameOf(classNameOf(type)));
-    vars.put("formaltypes", formalTypeString(type));
-    vars.put("actualtypes", actualTypeString(type));
-    vars.put("wildcardtypes", wildcardTypeString(type));
-    vars.put("subclass", simpleNameOf(generatedSubclassName(type)));
-    vars.put("cacheHashCode", autoParcel.cacheHashCode());
+    if (implementsAnnotation(type)) {
+      errorReporter.abortWithError("@AutoParcel may not be used to implement an annotation"
+          + " interface; try using @AutoAnnotation instead", type);
+    }
+    AutoParcelTemplateVars vars = new AutoParcelTemplateVars();
+    vars.pkg = TypeSimplifier.packageNameOf(type);
+    vars.origClass = TypeSimplifier.classNameOf(type);
+    vars.simpleClassName = TypeSimplifier.simpleNameOf(vars.origClass);
+    vars.subclass = TypeSimplifier.simpleNameOf(generatedSubclassName(type));
     defineVarsForType(type, vars);
-    String text = template.rewrite(vars);
+    GwtCompatibility gwtCompatibility = new GwtCompatibility(type);
+    vars.gwtCompatibleAnnotation = gwtCompatibility.gwtCompatibleAnnotationString();
+    String text = vars.toText();
+    text = Reformatter.fixup(text);
     writeSourceFile(generatedSubclassName(type), text, type);
+    GwtSerialization gwtSerialization = new GwtSerialization(gwtCompatibility, processingEnv, type);
+    gwtSerialization.maybeWriteGwtSerializer(vars);
   }
 
-  private void defineVarsForType(TypeElement type, Map<String, Object> vars)
-      throws CompileException {
+  private void defineVarsForType(TypeElement type, AutoParcelTemplateVars vars) {
+    Types typeUtils = processingEnv.getTypeUtils();
     List<ExecutableElement> methods = new ArrayList<ExecutableElement>();
     findLocalAndInheritedMethods(type, methods);
-    vars.putAll(objectMethodsToGenerate(methods));
-    dontImplementAnnotationEqualsOrHashCode(type, vars);
-    List<ExecutableElement> toImplement = methodsToImplement(methods);
-    Set<TypeMirror> types = new HashSet<TypeMirror>();
-    types.addAll(returnTypesOf(toImplement));
+    determineObjectMethodsToGenerate(methods, vars);
+    ImmutableSet<ExecutableElement> methodsToImplement = methodsToImplement(methods);
+    Set<TypeMirror> types = new TypeMirrorSet();
+    types.addAll(returnTypesOf(methodsToImplement));
+    TypeMirror javaxAnnotationGenerated = getTypeMirror(Generated.class);
+    types.add(javaxAnnotationGenerated);
     TypeMirror javaUtilArrays = getTypeMirror(Arrays.class);
     if (containsArrayType(types)) {
       // If there are array properties then we will be referencing java.util.Arrays.
       // Arrange to import it unless that would introduce ambiguity.
       types.add(javaUtilArrays);
     }
+    BuilderSpec builderSpec = new BuilderSpec(type, processingEnv, errorReporter);
+    Optional<BuilderSpec.Builder> builder = builderSpec.getBuilder();
+    ImmutableSet<ExecutableElement> toBuilderMethods;
+    if (builder.isPresent()) {
+      types.add(getTypeMirror(BitSet.class));
+      toBuilderMethods = builder.get().toBuilderMethods(typeUtils, methodsToImplement);
+    } else {
+      toBuilderMethods = ImmutableSet.of();
+    }
+    vars.toBuilderMethods =
+        FluentIterable.from(toBuilderMethods).transform(SimpleNameFunction.INSTANCE).toList();
+    Set<ExecutableElement> propertyMethods = Sets.difference(methodsToImplement, toBuilderMethods);
     String pkg = TypeSimplifier.packageNameOf(type);
-    TypeSimplifier typeSimplifier = new TypeSimplifier(processingEnv.getTypeUtils(), pkg, types);
-    vars.put("imports", typeSimplifier.typesToImport());
-    vars.put("Arrays", typeSimplifier.simplify(javaUtilArrays));
+    TypeSimplifier typeSimplifier = new TypeSimplifier(typeUtils, pkg, types, type.asType());
+    vars.imports = typeSimplifier.typesToImport();
+    vars.generated = typeSimplifier.simplify(javaxAnnotationGenerated);
+    vars.arrays = typeSimplifier.simplify(javaUtilArrays);
+    vars.bitSet = typeSimplifier.simplifyRaw(getTypeMirror(BitSet.class));
+    ImmutableMap<ExecutableElement, String> methodToPropertyName =
+        methodToPropertyNameMap(propertyMethods);
+    Map<ExecutableElement, String> methodToIdentifier =
+        Maps.newLinkedHashMap(methodToPropertyName);
+    fixReservedIdentifiers(methodToIdentifier);
     List<Property> props = new ArrayList<Property>();
-    for (ExecutableElement method : toImplement) {
-      String propType = typeSimplifier.simplify(method.getReturnType());
-      Property prop = new Property(method, propType, vars);
-      props.add(prop);
+    for (ExecutableElement method : propertyMethods) {
+      String propertyType = typeSimplifier.simplify(method.getReturnType());
+      String propertyName = methodToPropertyName.get(method);
+      String identifier = methodToIdentifier.get(method);
+      props.add(new Property(propertyName, identifier, method, propertyType, typeSimplifier));
     }
     // If we are running from Eclipse, undo the work of its compiler which sorts methods.
     eclipseHack().reorderProperties(props);
-    vars.put("props", props);
-    vars.put("serialVersionUID", getSerialVersionUID(type));
+    vars.props = props;
+    vars.serialVersionUID = getSerialVersionUID(type);
+    vars.formalTypes = typeSimplifier.formalTypeParametersString(type);
+    vars.actualTypes = TypeSimplifier.actualTypeParametersString(type);
+    vars.wildcardTypes = wildcardTypeParametersString(type);
 
-    TypeMirror parcelable = getTypeMirror("android.os.Parcelable");
-    vars.put("parcelable", processingEnv.getTypeUtils().isAssignable(type.asType(), parcelable));
+    TypeElement parcelable = processingEnv.getElementUtils().getTypeElement("android.os.Parcelable");
+    vars.parcelable = parcelable != null
+        && processingEnv.getTypeUtils().isAssignable(type.asType(), parcelable.asType());
+    // Check for @AutoParcel.Builder and add appropriate variables if it is present.
+    if (builder.isPresent()) {
+      builder.get().defineVars(vars, typeSimplifier, methodToPropertyName);
+    }
   }
 
-  private Set<TypeMirror> returnTypesOf(List<ExecutableElement> methods) {
-    HashSet<TypeMirror> returnTypes = new HashSet<TypeMirror>();
+  private ImmutableMap<ExecutableElement, String> methodToPropertyNameMap(
+      Iterable<ExecutableElement> propertyMethods) {
+    ImmutableMap.Builder<ExecutableElement, String> builder = ImmutableMap.builder();
+    boolean allGetters = allGetters(propertyMethods);
+    for (ExecutableElement method : propertyMethods) {
+      String methodName = method.getSimpleName().toString();
+      String name = allGetters ? nameWithoutPrefix(methodName) : methodName;
+      builder.put(method, name);
+    }
+    ImmutableMap<ExecutableElement, String> map = builder.build();
+    if (allGetters) {
+      checkDuplicateGetters(map);
+    }
+    return map;
+  }
+
+  private static boolean allGetters(Iterable<ExecutableElement> methods) {
+    for (ExecutableElement method : methods) {
+      String name = method.getSimpleName().toString();
+      // TODO(user): decide whether getfoo() (without a capital) is a getter. Currently it is.
+      boolean get = name.startsWith("get") && !name.equals("get");
+      boolean is = name.startsWith("is") && !name.equals("is")
+          && method.getReturnType().getKind() == TypeKind.BOOLEAN;
+      if (!get && !is) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private String nameWithoutPrefix(String name) {
+    if (name.startsWith("get")) {
+      name = name.substring(3);
+    } else {
+      assert name.startsWith("is");
+      name = name.substring(2);
+    }
+    return Introspector.decapitalize(name);
+  }
+
+  private void checkDuplicateGetters(Map<ExecutableElement, String> methodToIdentifier) {
+    Set<String> seen = Sets.newHashSet();
+    for (Map.Entry<ExecutableElement, String> entry : methodToIdentifier.entrySet()) {
+      if (!seen.add(entry.getValue())) {
+        errorReporter.reportError(
+            "More than one @AutoParcel property called " + entry.getValue(), entry.getKey());
+      }
+    }
+  }
+
+  // If we have a getter called getPackage() then we can't use the identifier "package" to represent
+  // its value since that's a reserved word.
+  private void fixReservedIdentifiers(Map<ExecutableElement, String> methodToIdentifier) {
+    for (Map.Entry<ExecutableElement, String> entry : methodToIdentifier.entrySet()) {
+      if (SourceVersion.isKeyword(entry.getValue())) {
+        entry.setValue(disambiguate(entry.getValue(), methodToIdentifier.values()));
+      }
+    }
+  }
+
+  private String disambiguate(String name, Collection<String> existingNames) {
+    for (int i = 0; ; i++) {
+      String candidate = name + i;
+      if (!existingNames.contains(candidate)) {
+        return candidate;
+      }
+    }
+  }
+
+  private Set<TypeMirror> returnTypesOf(Iterable<ExecutableElement> methods) {
+    Set<TypeMirror> returnTypes = new TypeMirrorSet();
     for (ExecutableElement method : methods) {
       returnTypes.add(method.getReturnType());
     }
@@ -570,84 +566,64 @@ public class AutoParcelProcessor extends AbstractProcessor {
     return false;
   }
 
-  private void dontImplementAnnotationEqualsOrHashCode(TypeElement type, Map<String, ?> vars) {
-    TypeMirror javaLangAnnotationAnnotation = getTypeMirror(Annotation.class);
-    Types typeUtils = processingEnv.getTypeUtils();
-    if (typeUtils.isAssignable(type.asType(), javaLangAnnotationAnnotation)) {
-      boolean equals = (Boolean) vars.get("equals");
-      boolean hashCode = (Boolean) vars.get("hashCode");
-      if (equals || hashCode) {
-        String bad = equals
-            ? (hashCode ? "equals(Object) and hashCode()" : "equals(Object)")
-            : "hashCode()";
-        reportError("The implementation of " + bad + " that would be generated for this @AutoParcel "
-            + "class would not obey the contract of " + bad + " in " + Annotation.class.getName(),
-            type);
-      }
-    }
-  }
-
   /**
-   * Given a list of all methods defined in or inherited by a class, returns a map with keys
-   * "toString", "equals", "hashCode" and corresponding value true if that method should be
-   * generated.
+   * Given a list of all methods defined in or inherited by a class, sets the equals, hashCode, and
+   * toString fields of vars according as the corresponding methods should be generated.
    */
-  private static Map<String, Boolean> objectMethodsToGenerate(List<ExecutableElement> methods) {
-    Map<String, Boolean> vars = new TreeMap<String, Boolean>();
+  private static void determineObjectMethodsToGenerate(
+      List<ExecutableElement> methods, AutoParcelTemplateVars vars) {
     // The defaults here only come into play when an ancestor class doesn't exist.
     // Compilation will fail in that case, but we don't want it to crash the compiler with
     // an exception before it does. If all ancestors do exist then we will definitely find
     // definitions of these three methods (perhaps the ones in Object) so we will overwrite these:
-    vars.put("equals", false);
-    vars.put("hashCode", false);
-    vars.put("toString", false);
+    vars.equals = false;
+    vars.hashCode = false;
+    vars.toString = false;
     for (ExecutableElement method : methods) {
-      if (isToStringOrEqualsOrHashCode(method)) {
-        boolean canGenerate = method.getModifiers().contains(Modifier.ABSTRACT)
-            || isJavaLangObject((TypeElement) method.getEnclosingElement());
-        vars.put(method.getSimpleName().toString(), canGenerate);
+      ObjectMethodToOverride override = objectMethodToOverride(method);
+      boolean canGenerate = method.getModifiers().contains(Modifier.ABSTRACT)
+          || isJavaLangObject((TypeElement) method.getEnclosingElement());
+      switch (override) {
+        case EQUALS:
+          vars.equals = canGenerate;
+          break;
+        case HASH_CODE:
+          vars.hashCode = canGenerate;
+          break;
+        case TO_STRING:
+          vars.toString = canGenerate;
+          break;
       }
     }
-    assert vars.size() == 3;
-    return vars;
   }
 
-  private List<ExecutableElement> methodsToImplement(List<ExecutableElement> methods)
-      throws CompileException {
-    List<ExecutableElement> toImplement = new ArrayList<ExecutableElement>();
+  private ImmutableSet<ExecutableElement> methodsToImplement(List<ExecutableElement> methods) {
+    ImmutableSet.Builder<ExecutableElement> toImplement = ImmutableSet.builder();
     boolean errors = false;
     for (ExecutableElement method : methods) {
       if (method.getModifiers().contains(Modifier.ABSTRACT)
-          && !isToStringOrEqualsOrHashCode(method) && !isFromParcelable(method)) {
+          && objectMethodToOverride(method) == ObjectMethodToOverride.NONE) {
         if (method.getParameters().isEmpty() && method.getReturnType().getKind() != TypeKind.VOID) {
           if (isReferenceArrayType(method.getReturnType())) {
-            reportError("An @AutoParcel class cannot define an array-valued property unless it is "
-                + "a primitive array", method);
+            errorReporter.reportError("An @AutoParcel class cannot define an array-valued property"
+                + " unless it is a primitive array", method);
             errors = true;
           }
           toImplement.add(method);
         } else {
-          reportError("@AutoParcel classes cannot have abstract methods other than property getters",
-              method);
-          errors = true;
+          // This could reasonably be an error, were it not for an Eclipse bug in
+          // ElementUtils.override that sometimes fails to recognize that one method overrides
+          // another, and therefore leaves us with both an abstract method and the subclass method
+          // that overrides it. This shows up in AutoValueTest.LukesBase for example.
+          errorReporter.reportWarning("@AutoParcel classes cannot have abstract methods other than"
+              + " property getters and Builder converters", method);
         }
       }
     }
     if (errors) {
-      throw new CompileException();
+      throw new AbortProcessingException();
     }
-    return toImplement;
-  }
-
-  private boolean isFromParcelable(ExecutableElement method) {
-    String name = method.getSimpleName().toString();
-    boolean isDescribeContents = name.equals("describeContents") && method.getParameters().isEmpty()
-        && method.getReturnType().toString().equals("int");
-    boolean isWriteToParcel = name.equals("writeToParcel") && method.getParameters().size() == 2
-        && method.getReturnType().toString().equals("void")
-        && method.getParameters().get(0).asType().toString().equals("android.os.Parcel")
-        && method.getParameters().get(1).asType().toString().equals("int");
-    return isDescribeContents || isWriteToParcel;
+    return toImplement.build();
   }
 
   private static boolean isReferenceArrayType(TypeMirror type) {
@@ -657,7 +633,6 @@ public class AutoParcelProcessor extends AbstractProcessor {
 
   private void writeSourceFile(String className, String text, TypeElement originatingType) {
     try {
-      note(text);
       JavaFileObject sourceFile =
           processingEnv.getFiler().createSourceFile(className, originatingType);
       Writer writer = sourceFile.openWriter();
@@ -672,7 +647,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
     }
   }
 
-  private boolean ancestorIsAndroidAutoParcel(TypeElement type) {
+  private boolean ancestorIsAutoValue(TypeElement type) {
     while (true) {
       TypeMirror parentMirror = type.getSuperclass();
       if (parentMirror.getKind() == TypeKind.NONE) {
@@ -685,6 +660,11 @@ public class AutoParcelProcessor extends AbstractProcessor {
       }
       type = parentElement;
     }
+  }
+
+  private boolean implementsAnnotation(TypeElement type) {
+    Types typeUtils = processingEnv.getTypeUtils();
+    return typeUtils.isAssignable(type.asType(), getTypeMirror(Annotation.class));
   }
 
   // Return a string like "1234L" if type instanceof Serializable and defines
@@ -702,7 +682,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
               && value != null) {
             return value + "L";
           } else {
-            reportError(
+            errorReporter.reportError(
                 "serialVersionUID must be a static final long compile-time constant", field);
             break;
           }
@@ -713,73 +693,21 @@ public class AutoParcelProcessor extends AbstractProcessor {
   }
 
   private TypeMirror getTypeMirror(Class<?> c) {
-    return getTypeMirror(c.getName());
-  }
-
-  private TypeMirror getTypeMirror(String className) {
-    return processingEnv.getElementUtils().getTypeElement(className).asType();
-  }
-
-  // Why does TypeParameterElement.toString() not return this? Grrr.
-  private static String typeParameterString(TypeParameterElement type) {
-    String s = type.getSimpleName().toString();
-    List<? extends TypeMirror> bounds = type.getBounds();
-    if (bounds.isEmpty()) {
-      return s;
-    } else {
-      s += " extends ";
-      String sep = "";
-      for (TypeMirror bound : bounds) {
-        s += sep + bound;
-        sep = " & ";
-      }
-      return s;
-    }
-  }
-
-  private static String formalTypeString(TypeElement type) {
-    List<? extends TypeParameterElement> typeParameters = type.getTypeParameters();
-    if (typeParameters.isEmpty()) {
-      return "";
-    } else {
-      String s = "<";
-      String sep = "";
-      for (TypeParameterElement typeParameter : typeParameters) {
-        s += sep + typeParameterString(typeParameter);
-        sep = ", ";
-      }
-      return s + ">";
-    }
-  }
-
-  private static String actualTypeString(TypeElement type) {
-    List<? extends TypeParameterElement> typeParameters = type.getTypeParameters();
-    if (typeParameters.isEmpty()) {
-      return "";
-    } else {
-      String s = "<";
-      String sep = "";
-      for (TypeParameterElement typeParameter : typeParameters) {
-        s += sep + typeParameter.getSimpleName();
-        sep = ", ";
-      }
-      return s + ">";
-    }
+    return processingEnv.getElementUtils().getTypeElement(c.getName()).asType();
   }
 
   // The @AutoParcel type, with a ? for every type.
-  private static String wildcardTypeString(TypeElement type) {
+  // If we have @AutoParcel abstract class Foo<T extends Something> then this method will return
+  // just <?>.
+  private static String wildcardTypeParametersString(TypeElement type) {
     List<? extends TypeParameterElement> typeParameters = type.getTypeParameters();
     if (typeParameters.isEmpty()) {
       return "";
     } else {
-      String s = "<";
-      String sep = "";
-      for (int i = 0; i < typeParameters.size(); i++) {
-        s += sep + "?";
-        sep = ", ";
-      }
-      return s + ">";
+      return "<"
+          + Joiner.on(", ").join(
+          FluentIterable.from(typeParameters).transform(Functions.constant("?")))
+          + ">";
     }
   }
 
