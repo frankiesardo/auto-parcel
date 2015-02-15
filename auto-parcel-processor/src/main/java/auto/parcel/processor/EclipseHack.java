@@ -15,9 +15,10 @@
  */
 package auto.parcel.processor;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -25,26 +26,15 @@ import java.io.Reader;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.Callable;
-import javax.annotation.processing.Filer;
-import javax.annotation.processing.Messager;
+
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import javax.tools.FileObject;
-import javax.tools.StandardLocation;
 
 /**
  * Works around an Eclipse bug where methods are sorted into alphabetical order before being given
@@ -60,121 +50,19 @@ import javax.tools.StandardLocation;
  * <p>
  * This is obviously a giant hack, and the right thing would be for the Eclipse compiler to be
  * fixed. The approach here works, but is vulnerable to future changes in the Eclipse API. If
- * {@code @AutoParcel} constructor calls like {@code new AndroidAutoParcel_Foo(...)} suddenly start being
+ * {@code @AutoParcel} constructor calls like {@code new AutoParcel_Foo(...)} suddenly start being
  * redlined in a new Eclipse version then the likely cause is that the APIs have changed and this
  * hack will need to be updated to track the change.
- *
- * @see https://bugs.eclipse.org/bugs/show_bug.cgi?id=300408
+ * <p>
+ * @see <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=300408">Eclipse bug 300408</a>
  *
  * @author Éamonn McManus
  */
 class EclipseHack {
-  static final String ENABLING_OPTION = "auto.parcel.EclipseHackTest";
-
   private final ProcessingEnvironment processingEnv;
-  private final boolean eclipseHackTest;
 
   EclipseHack(ProcessingEnvironment processingEnv) {
-    boolean eclipseHackTest = processingEnv.getOptions().containsKey(ENABLING_OPTION);
-    this.processingEnv = eclipseHackTest
-        ? new EclipseProcessingEnvironment(processingEnv)
-        : processingEnv;
-    this.eclipseHackTest = eclipseHackTest;
-  }
-
-  // Fake implementation of ProcessingEnvironment that looks like Eclipse's, for testing only.
-  private static class EclipseProcessingEnvironment implements ProcessingEnvironment {
-    private final ProcessingEnvironment processingEnv;
-
-    EclipseProcessingEnvironment(ProcessingEnvironment processingEnv) {
-      this.processingEnv = processingEnv;
-    }
-
-    @SuppressWarnings("unused") // accessed via reflection
-    public EclipseIFile getEnclosingIFile(Element element) {
-      return new EclipseIFile(processingEnv, (TypeElement) element);
-    }
-
-    @Override public Map<String, String> getOptions() {
-      return processingEnv.getOptions();
-    }
-
-    @Override public Messager getMessager() {
-      return processingEnv.getMessager();
-    }
-
-    @Override public Filer getFiler() {
-      return processingEnv.getFiler();
-    }
-
-    @Override public Elements getElementUtils() {
-      return processingEnv.getElementUtils();
-    }
-
-    @Override public Types getTypeUtils() {
-      return processingEnv.getTypeUtils();
-    }
-
-    @Override public SourceVersion getSourceVersion() {
-      return processingEnv.getSourceVersion();
-    }
-
-    @Override public Locale getLocale() {
-      return processingEnv.getLocale();
-    }
-  }
-
-  private static class EclipseIFile {
-    private final File file;
-
-    EclipseIFile(ProcessingEnvironment processingEnv, TypeElement element) {
-      Filer filer = processingEnv.getFiler();
-      // walk up the enclosing elements until you find a top-level element
-      Element topLevel = element;
-      while (topLevel.getEnclosingElement().getKind() != ElementKind.PACKAGE) {
-        topLevel = topLevel.getEnclosingElement();
-      }
-      try {
-        FileObject resource = filer.getResource(StandardLocation.SOURCE_PATH,
-            processingEnv.getElementUtils().getPackageOf(element).getQualifiedName(),
-            topLevel.getSimpleName() + ".java");
-        this.file = new File(resource.toUri());
-        if (!file.canRead()) {
-          processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-              "Cannot find source code in file " + file, element);
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    @SuppressWarnings("unused") // accessed via reflection
-    public String getCharset() {
-      return Charset.defaultCharset().name();
-    }
-
-    @SuppressWarnings("unused") // accessed via reflection
-    public InputStream getContents() throws IOException {
-      return new FileInputStream(file);
-    }
-
-    @SuppressWarnings("unused") // accessed via reflection
-    public URI getRawLocationURI() {
-      return file.toURI();
-    }
-  }
-
-  private static final Comparator<ExecutableElement> ELEMENT_COMPARATOR =
-      new Comparator<ExecutableElement>() {
-    @Override public int compare(ExecutableElement a, ExecutableElement b) {
-      return a.getSimpleName().toString().compareTo(b.getSimpleName().toString());
-    }
-  };
-
-  void sortMethodsIfSimulatingEclipse(List<ExecutableElement> methods) {
-    if (eclipseHackTest) {
-      Collections.sort(methods, ELEMENT_COMPARATOR);
-    }
+    this.processingEnv = processingEnv;
   }
 
   /**
@@ -188,9 +76,9 @@ class EclipseHack {
     // fix each sublist independently.
     int index = 0;
     while (index < properties.size()) {
-      TypeElement owner = properties.get(index).owner();
+      TypeElement owner = properties.get(index).getOwner();
       int nextIndex = index + 1;
-      while (nextIndex < properties.size() && properties.get(nextIndex).owner().equals(owner)) {
+      while (nextIndex < properties.size() && properties.get(nextIndex).getOwner().equals(owner)) {
         nextIndex++;
       }
       List<AutoParcelProcessor.Property> subList = properties.subList(index, nextIndex);
@@ -204,7 +92,7 @@ class EclipseHack {
     if (propertyOrderer == null) {
       return;
     }
-    final List<String> order;
+    final ImmutableList<String> order;
     try {
       order = propertyOrderer.determinePropertyOrder();
     } catch (IOException e) {
@@ -214,7 +102,7 @@ class EclipseHack {
     // We expect that all the properties will be found, but if not then we won't try reordering.
     boolean allFound = true;
     for (AutoParcelProcessor.Property property : properties) {
-      allFound &= order.contains(property.toString());
+      allFound &= order.contains(property.getGetter());
     }
     if (allFound) {
       // We successfully found the abstract methods corresponding to all the properties, so now
@@ -222,8 +110,8 @@ class EclipseHack {
       Comparator<AutoParcelProcessor.Property> comparator = new Comparator<AutoParcelProcessor.Property>() {
         @Override
         public int compare(AutoParcelProcessor.Property a, AutoParcelProcessor.Property b) {
-          String aName = a.toString();
-          String bName = b.toString();
+          String aName = a.getGetter();
+          String bName = b.getGetter();
           return order.indexOf(aName) - order.indexOf(bName);
         }
       };
@@ -268,13 +156,31 @@ class EclipseHack {
         return new SourcePropertyOrderer(type, readerProvider);
       }
     } catch (Exception e) {
-      // Reflection failed, so we are presumably not in Eclipse.
-      return null;
+      // The method getRawLocationURI used above exists on the Eclipse IDE environment, but not on
+      // the batch compiler environment. However, the file can also be obtained from the TypeElement
+      // through the getFileName method.
+      if (!type.getClass().getName().toLowerCase().contains("eclipse")) {
+        // Guard against the case where a non-Eclipse type happens to have a getFileName method
+        return null;
+      }
+      try {
+        final String filename = (String) type.getClass().getMethod("getFileName").invoke(type);
+        Callable<Reader> readerProvider = new Callable<Reader>() {
+          @Override
+          public Reader call() throws Exception {
+            return new FileReader(filename);
+          }
+        };
+        return new SourcePropertyOrderer(type, readerProvider);
+      } catch (Exception e2) {
+        // Reflection failed (twice), so we are presumably not in Eclipse.
+        return null;
+      }
     }
   }
 
   private interface PropertyOrderer {
-    List<String> determinePropertyOrder() throws IOException;
+    ImmutableList<String> determinePropertyOrder() throws IOException;
   }
 
   private class SourcePropertyOrderer implements PropertyOrderer {
@@ -295,24 +201,21 @@ class EclipseHack {
       this.readerProvider = readerProvider;
     }
 
-    @Override public List<String> determinePropertyOrder() throws IOException {
+    @Override public ImmutableList<String> determinePropertyOrder() throws IOException {
       Reader sourceReader;
       try {
         sourceReader = readerProvider.call();
       } catch (Exception e) {
-        return Collections.emptyList();
+        return ImmutableList.of();
       }
       try {
         String packageName = TypeSimplifier.packageNameOf(type);
         String className = type.getQualifiedName().toString();
         AbstractMethodExtractor extractor = new AbstractMethodExtractor();
         JavaTokenizer tokenizer = new JavaTokenizer(sourceReader);
-        Map<String, List<String>> methodOrders = extractor.abstractMethods(tokenizer, packageName);
-        if (methodOrders.containsKey(className)) {
-          return methodOrders.get(className);
-        } else {
-          return Collections.emptyList();
-        }
+        ImmutableListMultimap<String, String> methodOrders =
+            extractor.abstractMethods(tokenizer, packageName);
+        return methodOrders.get(className);
       } finally {
         sourceReader.close();
       }
@@ -327,7 +230,7 @@ class EclipseHack {
     }
 
     @Override
-    public List<String> determinePropertyOrder() throws IOException {
+    public ImmutableList<String> determinePropertyOrder() throws IOException {
       InputStream inputStream = null;
       try {
         URL classFileUrl = classFileUri.toURL();

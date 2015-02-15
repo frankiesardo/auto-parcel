@@ -1,10 +1,11 @@
 package auto.parcel.processor;
 
-import java.io.StringReader;
 import junit.framework.TestCase;
 
+import java.io.StringReader;
+
 /**
- * Unit tests for {@link auto.parcel.processor.JavaTokenizer}.
+ * Unit tests for {@link JavaTokenizer}.
  *
  * @author emcmanus@google.com (Éamonn McManus)
  */

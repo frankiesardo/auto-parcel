@@ -1,14 +1,13 @@
 package auto.parcel.processor;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import java.io.StringReader;
-import java.util.List;
-import java.util.Map;
+import com.google.common.collect.ImmutableMultimap;
+
 import junit.framework.TestCase;
 
+import java.io.StringReader;
+
 /**
- * Tests for {@link auto.parcel.processor.AbstractMethodExtractor}.
+ * Tests for {@link AbstractMethodExtractor}.
  *
  * @author Éamonn McManus
  */
@@ -28,9 +27,11 @@ public class AbstractMethodExtractorTest extends TestCase {
         + "}\n";
     JavaTokenizer tokenizer = new JavaTokenizer(new StringReader(source));
     AbstractMethodExtractor extractor = new AbstractMethodExtractor();
-    Map<String, List<String>> expected = ImmutableMap.<String, List<String>>of(
-        "com.example.Foo", ImmutableList.of("one", "two", "three"));
-    Map<String, List<String>> actual = extractor.abstractMethods(tokenizer, "com.example");
+    ImmutableMultimap<String, String> expected = ImmutableMultimap.of(
+        "com.example.Foo", "one",
+        "com.example.Foo", "two",
+        "com.example.Foo", "three");
+    ImmutableMultimap<String, String> actual = extractor.abstractMethods(tokenizer, "com.example");
     assertEquals(expected, actual);
   }
 
@@ -61,10 +62,45 @@ public class AbstractMethodExtractorTest extends TestCase {
         + "}\n";
     JavaTokenizer tokenizer = new JavaTokenizer(new StringReader(source));
     AbstractMethodExtractor extractor = new AbstractMethodExtractor();
-    Map<String, List<String>> expected = ImmutableMap.<String, List<String>>of(
-        "com.example.Foo.Baz", ImmutableList.of("complicated", "simple"),
-        "com.example.Foo.Bar", ImmutableList.of("whatever"));
-    Map<String, List<String>> actual = extractor.abstractMethods(tokenizer, "com.example");
+    ImmutableMultimap<String, String> expected = ImmutableMultimap.of(
+        "com.example.Foo.Baz", "complicated",
+        "com.example.Foo.Baz", "simple",
+        "com.example.Foo.Bar", "whatever");
+    ImmutableMultimap<String, String> actual = extractor.abstractMethods(tokenizer, "com.example");
+    assertEquals(expected, actual);
+  }
+
+  public void testClassConstants() {
+    // Regression test for a bug where String.class was parsed as introducing a class definition
+    // of a later identifier.
+    String source = "package com.example;\n"
+        + "import auto.parcel.AutoParcel;\n"
+        + "import com.google.common.collect.ImmutableSet;\n"
+        + "import com.google.common.labs.reflect.ValueType;\n"
+        + "import com.google.common.primitives.Primitives;\n"
+        + "public final class ProducerMetadata<T> extends ValueType {\n"
+        + "  private static final ImmutableSet<Class<?>> ALLOWABLE_MAP_KEY_TYPES =\n"
+        + "    ImmutableSet.<Class<?>>builder()\n"
+        + "    .addAll(Primitives.allPrimitiveTypes())\n"
+        + "    .addAll(Primitives.allWrapperTypes())\n"
+        + "    .add(String.class)\n"
+        + "    .add(Class.class)\n"
+        + "    .build();\n"
+        + "  @AutoParcel abstract static class SourcedKeySet {\n"
+        + "    abstract ImmutableSet<Key<?>> unknownSource();\n"
+        + "    abstract ImmutableSet<Key<?>> fromInputs();\n"
+        + "    abstract ImmutableSet<Key<?>> fromNodes();\n"
+        + "    abstract ImmutableSet<Key<?>> all();\n"
+        + "  }\n"
+        + "}";
+    JavaTokenizer tokenizer = new JavaTokenizer(new StringReader(source));
+    AbstractMethodExtractor extractor = new AbstractMethodExtractor();
+    ImmutableMultimap<String, String> expected = ImmutableMultimap.of(
+        "com.example.ProducerMetadata.SourcedKeySet", "unknownSource",
+        "com.example.ProducerMetadata.SourcedKeySet", "fromInputs",
+        "com.example.ProducerMetadata.SourcedKeySet", "fromNodes",
+        "com.example.ProducerMetadata.SourcedKeySet", "all");
+    ImmutableMultimap<String, String> actual = extractor.abstractMethods(tokenizer, "com.example");
     assertEquals(expected, actual);
   }
 }

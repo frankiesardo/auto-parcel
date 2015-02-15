@@ -4,8 +4,8 @@ subprojects {
       mavenCentral()
     }
     dependencies {
-      classpath 'com.android.tools.build:gradle:0.9.+'
-      classpath 'com.neenbedankt.gradle.plugins:android-apt:1.2'
+      classpath 'com.android.tools.build:gradle:1.1.0-rc1'
+      classpath 'com.neenbedankt.gradle.plugins:android-apt:1.4'
     }
   }
 
@@ -18,9 +18,4 @@ subprojects {
   }
 
   project.group = 'com.github.frankiesardo'
-}
-
-
-task wrapper(type: Wrapper) {
-  gradleVersion = '1.10'
 }

@@ -1,13 +1,13 @@
 package auto.parcel.processor;
 
-import auto.parcel.processor.AbstractMethodLister;
+import junit.framework.TestCase;
+
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
-import junit.framework.TestCase;
 
 /**
- * Tests for {@link auto.parcel.processor.AbstractMethodLister}.
+ * Tests for {@link AbstractMethodLister}.
  *
  * @author Éamonn McManus
  */

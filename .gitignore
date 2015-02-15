@@ -37,3 +37,4 @@ tmp/
 *.DS_Store
 
 *.orig
+gradle.properties
