@@ -9,19 +9,10 @@ Why AutoValue?
 Because it's awesome.
 I can't explain it better than [that](https://github.com/google/auto/tree/master/value).
 
-Ok then why an Android port?
+Ok then why a fork for Android?
 --------
 
-Two main reasons:
-
-- Google Auto is a monolithic dependency that comes with a lot of libraries, some of them quite big (I'm looking at you Guava) potentially polluting your namespace and increasing apk size.
-Android AutoValue splits the project in two libraries, one to be included in your apk (which just contains the interface) and one only used during compilation.
-
-- AutoParcel supports Parcelable generation.
-That's right. One of the most verbose implementation in Android is now made as quick implementing `Serializable`.
-Even quicker because you don't have to generate a `serialVersionUID`.
-Just add `implements Parcelable` to your value objects and you're done.
-This is by far the simplest and fastest way to generate `Parcelable`s on Android with zero reflection and completely transparent to the rest of your application.
+Because AutoValue is not extensible [yet](https://github.com/google/auto/pull/87). This fork adds automatic Parcelable implementation for your POJOS. It's easy as just adding `implements Parcelable`.
 
 Fine, how do I use it?
 --------
