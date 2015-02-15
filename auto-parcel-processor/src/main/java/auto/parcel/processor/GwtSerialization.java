@@ -87,7 +87,6 @@ class GwtSerialization {
       vars.imports = autoVars.imports;
       vars.pkg = autoVars.pkg;
       vars.subclass = autoVars.subclass;
-      vars.generated = autoVars.generated;
       String className = (vars.pkg.isEmpty() ? "" : vars.pkg + ".") + vars.subclass
           + "_CustomFieldSerializer";
       vars.serializerClass = TypeSimplifier.simpleNameOf(className);
@@ -176,12 +175,6 @@ class GwtSerialization {
 
     /** The simple name of the generated GWT serializer class. */
     String serializerClass;
-
-    /**
-     * The spelling of the javax.annotation.Generated class: Generated or
-     * javax.annotation.Generated.
-     */
-    String generated;
 
     /** A string that should change if any salient details of the serialized class change. */
     String classHashString;

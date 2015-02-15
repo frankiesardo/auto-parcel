@@ -425,8 +425,8 @@ public class AutoParcelProcessor extends AbstractProcessor {
     ImmutableSet<ExecutableElement> methodsToImplement = methodsToImplement(methods);
     Set<TypeMirror> types = new TypeMirrorSet();
     types.addAll(returnTypesOf(methodsToImplement));
-    TypeMirror javaxAnnotationGenerated = getTypeMirror(Generated.class);
-    types.add(javaxAnnotationGenerated);
+    //    TypeMirror javaxAnnotationGenerated = getTypeMirror(Generated.class);
+    //    types.add(javaxAnnotationGenerated);
     TypeMirror javaUtilArrays = getTypeMirror(Arrays.class);
     if (containsArrayType(types)) {
       // If there are array properties then we will be referencing java.util.Arrays.
@@ -448,7 +448,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
     String pkg = TypeSimplifier.packageNameOf(type);
     TypeSimplifier typeSimplifier = new TypeSimplifier(typeUtils, pkg, types, type.asType());
     vars.imports = typeSimplifier.typesToImport();
-    vars.generated = typeSimplifier.simplify(javaxAnnotationGenerated);
+    //    vars.generated = typeSimplifier.simplify(javaxAnnotationGenerated);
     vars.arrays = typeSimplifier.simplify(javaUtilArrays);
     vars.bitSet = typeSimplifier.simplifyRaw(getTypeMirror(BitSet.class));
     ImmutableMap<ExecutableElement, String> methodToPropertyName =

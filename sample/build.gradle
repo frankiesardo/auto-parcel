@@ -2,20 +2,16 @@ apply plugin: 'com.android.application'
 apply plugin: 'android-apt'
 
 android {
-  compileSdkVersion 21
-  buildToolsVersion "21.1.2"
+  compileSdkVersion 19
+  buildToolsVersion "19.1.0"
 
   defaultConfig {
     minSdkVersion 14
     targetSdkVersion 21
-    versionCode 1
-    versionName "1.0"
   }
 }
 
 dependencies {
   compile project(':auto-parcel')
   apt project(':auto-parcel-processor')
-  compile 'com.google.code.findbugs:jsr305:2.0.3'
-  provided 'org.glassfish:javax.annotation:10.0-b28'
 }

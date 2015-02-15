@@ -1,4 +1,4 @@
-## Template for each generated MutableAutoParcel_Foo class.
+## Template for each generated AutoParcel_Foo class.
 ## This template uses the Apache Velocity Template Language (VTL).
 ## The variables ($pkg, $props, and so on) are defined by the fields of MutableAutoParcelTemplateVars.
 ##
@@ -18,7 +18,6 @@ import $i;
 #end
 
 ${gwtCompatibleAnnotation}
-@${generated}("com.google.auto.value.processor.MutableAutoParcelProcessor")
 final class $subclass$formalTypes extends $origClass$actualTypes {
 
 ## Fields

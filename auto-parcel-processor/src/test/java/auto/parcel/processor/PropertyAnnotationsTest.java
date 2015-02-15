@@ -104,9 +104,6 @@ public class PropertyAnnotationsTest extends TestCase {
         .add(
             "package foo.bar;",
             "",
-            "import javax.annotation.Generated;",
-            "",
-            "@Generated(\"" + AutoParcelProcessor.class.getName() + "\")",
             "final class AutoParcel_Baz extends Baz {",
             "  private final int buh;",
             "",
