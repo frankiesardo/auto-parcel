@@ -42,10 +42,11 @@ The easy way is to use Gradle.
 buildscript {
   repositories {
     mavenCentral()
+    jcenter()
   }
   dependencies {
-    classpath 'com.android.tools.build:gradle:+'
-    classpath 'com.neenbedankt.gradle.plugins:android-apt:+'
+    classpath 'com.android.tools.build:gradle:0.3'
+    classpath 'com.neenbedankt.gradle.plugins:android-apt:0.3'
   }
 }
 
@@ -53,12 +54,17 @@ apply plugin: 'android'
 apply plugin: 'android-apt'
 
 dependencies {
-  compile 'com.github.frankiesardo:auto-parcel:+'
-  apt 'com.github.frankiesardo:auto-parcel-processor:+'
+  compile 'com.github.frankiesardo:auto-parcel:0.3'
+  apt 'com.github.frankiesardo:auto-parcel-processor:0.3'
+}
+
+repositories {
+  mavenCentral()
+  jcenter()
 }
 ```
 
-I recommend using the `android-apt` plugin so that Android Studio picks up the generated files.
+I recommend using the [`android-apt`](https://bitbucket.org/hvisser/android-apt) plugin so that Android Studio picks up the generated files.
 Check out the sample project for a working example.
 
 License
