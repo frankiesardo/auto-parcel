@@ -1,6 +1,8 @@
 Android AutoParcel
 ============
 
+[![Build Status](https://secure.travis-ci.org/frankiesardo/auto-parcel.png)](http://travis-ci.org/frankiesardo/auto-parcel)
+
 Port of Google AutoValue for Android with Parcelable generation goodies.
 
 Why AutoValue?
