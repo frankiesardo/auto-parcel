@@ -47,13 +47,13 @@ buildscript {
     jcenter()
   }
   dependencies {
-    classpath 'com.android.tools.build:gradle:0.3'
-    classpath 'com.neenbedankt.gradle.plugins:android-apt:0.3'
+    classpath 'com.android.tools.build:gradle:0.14.4'
+    classpath 'com.neenbedankt.gradle.plugins:android-apt:1.4'
   }
 }
 
-apply plugin: 'android'
-apply plugin: 'android-apt'
+apply plugin: 'com.android.application'
+apply plugin: 'com.neenbedankt.android-apt'
 
 dependencies {
   compile 'com.github.frankiesardo:auto-parcel:0.3'
