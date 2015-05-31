@@ -338,7 +338,7 @@ public class AutoParcelProcessor extends AbstractProcessor {
         break;
       case 2:
         if (name.equals("writeToParcel")
-            && method.getParameters().get(0).asType().toString().equals("android.os.Parcelable")
+            && method.getParameters().get(0).asType().toString().equals("android.os.Parcel")
             && method.getParameters().get(1).asType().toString().equals("int")) {
           return ObjectMethodToOverride.WRITE_TO_PARCEL;
         }
