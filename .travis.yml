@@ -5,8 +5,8 @@ jdk:
 
 android:
   components:
-    - build-tools-19.1.0
-    - android-19
+    - build-tools-22.0.1
+    - android-22
 
 script:
   - ./gradlew clean check -Dpre-dex=false
