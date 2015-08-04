@@ -1,7 +1,7 @@
 apply plugin: 'maven'
 apply plugin: 'signing'
 
-version = "0.3"
+version = "0.3.1"
 
 def isReleaseBuild() {
   !version.contains("SNAPSHOT")
@@ -18,7 +18,7 @@ if (isReleaseBuild()) {
 }
 
 def username = project.hasProperty("nexusUsername") ? project.getProperty("nexusUsername") : ""
-def password = project.hasProperty("nexusPassword") ? project.hasProperty("nexusPassword") : ""
+def password = project.hasProperty("nexusPassword") ? project.getProperty("nexusPassword") : ""
 
 afterEvaluate { project ->
   uploadArchives {
