@@ -1,26 +1,14 @@
-Android AutoParcel
+AutoParcel
 ============
 
 [![Build Status](https://secure.travis-ci.org/frankiesardo/auto-parcel.png)](http://travis-ci.org/frankiesardo/auto-parcel)
 
-Port of Google AutoValue for Android with Parcelable generation goodies.
+AutoParcel is an [AutoValue]() extension that enables Parcelable values generation.
 
-Why AutoValue?
---------
-
-Because it's awesome.
-I can't explain it better than [that](https://github.com/google/auto/tree/master/value).
-
-Ok then why a fork for Android?
---------
-
-Because AutoValue is not extensible [yet](https://github.com/google/auto/pull/87). This fork adds automatic Parcelable implementation for your POJOS. It's easy as just adding `implements Parcelable`.
-
-Fine, how do I use it?
---------
+Just add `implements Parcelable` to your `@AutoValue` annotated models.
 
 ```java
-@AutoParcel
+@AutoValue
 abstract class SomeModel implements Parcelable {
   abstract String name();
   abstract List<SomeSubModel> subModels();
@@ -33,12 +21,13 @@ abstract class SomeModel implements Parcelable {
 ```
 
 That's that simple. And you get `Parcelable`, `hashCode`, `equals` and `toString` implementations for free.
+
 As your models evolve you don't need to worry about keeping all the boilerplate in sync with the new implementation, it's already taken care of.
 
-Sounds great, where can I download it?
+Download
 --------
 
-The easy way is to use Gradle.
+Use the same dependency qualifier that you would use for AutoValue (e.g. `apt`)
 
 ```groovy
 buildscript {
@@ -47,42 +36,33 @@ buildscript {
     jcenter()
   }
   dependencies {
-    classpath 'com.android.tools.build:gradle:1.5.0'
-    classpath 'com.neenbedankt.gradle.plugins:android-apt:1.8'
+    classpath 'com.android.tools.build:gradle:0.14.4'
+    classpath 'com.neenbedankt.gradle.plugins:android-apt:1.4'
   }
 }
 
 apply plugin: 'com.android.application'
 apply plugin: 'com.neenbedankt.android-apt'
 
-dependencies {
-  compile 'com.github.frankiesardo:auto-parcel:0.3.1'
-  apt 'com.github.frankiesardo:auto-parcel-processor:0.3.1'
-}
-
 repositories {
   mavenCentral()
   jcenter()
+  maven {url "https://clojars.org/repo/"}
 }
+
+dependencies {
+  apt 'frankiesardo:auto-parcel:1.0.0'
+  apt 'com.google.auto:auto-value:1.0'
+}
+
 ```
+_Notice the clojars line in your maven repositories_
 
 I recommend using the [`android-apt`](https://bitbucket.org/hvisser/android-apt) plugin so that Android Studio picks up the generated files.
 Check out the sample project for a working example.
 
-License
--------
+Roadmap
+--------
 
-    Copyright 2014 Frankie Sardo
-    Copyright 2013 Google, Inc.
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+- Dismantle instanceof checks speeding up runtime serialization [ff]
+- Walking up superclasses to ensure the object is Parcelable [gh]
