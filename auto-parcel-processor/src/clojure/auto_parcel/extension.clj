@@ -2,26 +2,25 @@
   (:require [stencil.core :as mustache]))
 
 (def template
-  "// Generated code from AutoParcel. Do not modify!
-package {{package}};
-import android.os.Parcelable;
-import android.os.Parcelable.Creator;
-import android.os.Parcel;
+  "package {{& package}};
 
+import android.os.Parcel;
+import javax.annotation.Generated;
 import java.lang.ClassLoader;
 
-final class {{class-name}} extends {{class-to-extend}} {
+@Generated(\"auto_parcel.AutoParcelExtension\")
+final class {{& class-name}} extends {{& class-to-extend}} {
 
-  private final static ClassLoader CL = {{class-name}}.class.getClassLoader();
+  private final static ClassLoader CL = {{& class-name}}.class.getClassLoader();
 
-  public {{class-name}} (
+  public {{& class-name}} (
     {{#props}}
-    {{cast-type}} {{name}}{{^last?}},{{/last?}}
+    {{& cast-type}} {{& name}}{{^last?}},{{/last?}}
     {{/props}}
   ) {
     super(
       {{#props}}
-      {{name}}{{^last?}},{{/last?}}
+      {{& name}}{{^last?}},{{/last?}}
       {{/props}}
     );
   }
@@ -34,27 +33,27 @@ final class {{class-name}} extends {{class-to-extend}} {
   @Override
   public void writeToParcel(Parcel dest, int flags) {
     {{#props}}
-    dest.writeValue({{name}}());
+    dest.writeValue({{& name}}());
     {{/props}}
   }
 
-  private {{class-name}}(Parcel in) {
+  private {{& class-name}}(Parcel in) {
     this(
       {{#props}}
-      ({{cast-type}}) in.readValue(CL){{^last?}},{{/last?}}
+      ({{& cast-type}}) in.readValue(CL){{^last?}},{{/last?}}
       {{/props}}
     );
   }
 
-  public static final Creator<{{class-name}}> CREATOR = new Creator<{{class-name}}>() {
+  public static final Creator<{{& class-name}}> CREATOR = new Creator<{{& class-name}}>() {
     @Override
-    public {{class-name}} createFromParcel(Parcel in) {
-      return new {{class-name}}(in);
+    public {{& class-name}} createFromParcel(Parcel in) {
+      return new {{& class-name}}(in);
     }
 
     @Override
-    public {{class-name}}[] newArray(int size) {
-      return new {{class-name}}[size];
+    public {{& class-name}}[] newArray(int size) {
+      return new {{& class-name}}[size];
     }
   };
 }")

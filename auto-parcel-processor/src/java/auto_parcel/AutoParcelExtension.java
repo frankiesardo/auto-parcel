@@ -1,19 +1,5 @@
 package auto_parcel;
 
-import com.google.auto.common.MoreTypes;
-import com.google.auto.value.AutoValueExtension;
-
-import com.squareup.javapoet.ArrayTypeName;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.FieldSpec;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterSpec;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
-import com.squareup.javapoet.TypeVariableName;
 import java.lang.reflect.ParameterizedType;
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.ExecutableElement;
@@ -24,8 +10,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.util.*;
-
 
 import clojure.java.api.Clojure;
 import clojure.lang.IFn;

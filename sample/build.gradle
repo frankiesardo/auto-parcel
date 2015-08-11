@@ -1,5 +1,29 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:1.0.0'
+        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.4'
+    }
+}
+
 apply plugin: 'com.android.application'
 apply plugin: 'com.neenbedankt.android-apt'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    jcenter()
+    maven {url "https://clojars.org/repo/"}
+}
+
+
+dependencies {
+    provided 'frankiesardo:auto-parcel:1.0-SNAPSHOT'
+    apt 'frankiesardo:auto-parcel:1.0-SNAPSHOT'
+}
 
 android {
     lintOptions {
@@ -9,7 +33,3 @@ android {
     buildToolsVersion "22.0.1"   
 }
 
-dependencies {
-  compile project(':auto-parcel')
-  apt project(':auto-parcel-processor')
-}

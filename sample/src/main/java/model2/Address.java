@@ -1,9 +1,9 @@
 package model2;
 
-import auto.parcel.AutoParcel;
+import com.google.auto.value.AutoValue;
 import android.os.Parcelable;
 
-@AutoParcel
+@AutoValue
 public abstract class Address implements Parcelable {
   public abstract double[] coordinates();
   public abstract String cityName();
@@ -13,20 +13,19 @@ public abstract class Address implements Parcelable {
   }
 
   public static Builder builder() {
-      return new AutoParcel_Address.Builder();
+      return new AutoValue_Address.Builder();
   }
 
-  @AutoParcel.Builder
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @AutoValue.Builder
   public interface Builder {
       public Builder coordinates(double[] x);
       public Builder cityName(String x);
       public Address build();
   }
 
-  @AutoParcel.Validate
-  public void validate() {
-      if (cityName().length() < 2) {
-          throw new IllegalStateException("Not a city name");
-      }
-  }
 }

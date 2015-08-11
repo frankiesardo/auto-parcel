@@ -3,19 +3,19 @@ AutoParcel
 
 [![Build Status](https://secure.travis-ci.org/frankiesardo/auto-parcel.png)](http://travis-ci.org/frankiesardo/auto-parcel)
 
-AutoParcel is an [AutoValue]() extension that enables Parcelable values generation.
+AutoParcel is an [AutoValue](https://github.com/google/auto/tree/master/value) extension that enables Parcelable values generation.
 
 Just add `implements Parcelable` to your `@AutoValue` annotated models.
 
 ```java
 @AutoValue
-abstract class SomeModel implements Parcelable {
+abstract class Person implements Parcelable {
   abstract String name();
-  abstract List<SomeSubModel> subModels();
-  abstract Map<String, OtherSubModel> modelsMap();
+  abstract List<Address> addresses();
+  abstract Map<Person, Integer> likes();
 
-  static SomeModel create(String name, List<SomeSubModel> subModels, Map<String, OtherSubModel> modelsMap) {
-    return new AutoParcel_SomeModel(name, subModels, modelsMap);
+  static Person create(String name, List<Address> addresses, Map<Person, Integer> likes) {
+    return new AutoParcel_SomeModel(name, addresses, likes);
   }
 }
 ```
@@ -36,7 +36,7 @@ buildscript {
     jcenter()
   }
   dependencies {
-    classpath 'com.android.tools.build:gradle:0.14.4'
+    classpath 'com.android.tools.build:gradle:1.0.0'
     classpath 'com.neenbedankt.gradle.plugins:android-apt:1.4'
   }
 }
@@ -51,8 +51,7 @@ repositories {
 }
 
 dependencies {
-  apt 'frankiesardo:auto-parcel:1.0.0'
-  apt 'com.google.auto:auto-value:1.0'
+  apt 'frankiesardo:auto-parcel:{{latest-version}}'
 }
 
 ```

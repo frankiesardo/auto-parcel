@@ -8,35 +8,6 @@
            [com.google.testing.compile JavaSourceSubjectFactory]
            [org.truth0 Truth]))
 
-(comment
-  (defn method
-    "Calls a private or protected method.
-   class - the class where the method is declared
-   params - a vector of Class which correspond to the arguments to the method
-   obj - nil for static methods, the instance object otherwise
-   method-name - something Named"
-    [class method-name params obj & args]
-    (-> class (.getDeclaredMethod (name method-name) (into-array Class params))
-        (doto (.setAccessible true))
-        (.invoke obj (into-array Object args))))
-
-  (defn field
-    "Access to private or protected field. field-name must be something Named
-   class - the class where the field is declared
-   field-name - Named
-   obj - the instance object, or a Class for static fields"
-    [class field-name obj]
-    (-> class (.getDeclaredField (name field-name))
-        (doto (.setAccessible true))
-        (.get obj)))
-
-  (defn debug [x]
-    (def foo x)
-    (def bar (field com.google.testing.compile.JavaSourcesSubject$SuccessfulCompilationBuilder "result" foo))
-    (def baz (method com.google.testing.compile.Compilation$Result "generatedSources" [] bar))
-    (println (.getCharContent (first baz) true))
-    x))
-
 (defn- java-source []
   (JavaSourceSubjectFactory/javaSource))
 
@@ -82,10 +53,10 @@
        "}"]]
      ["test.AutoValue_Test"
       ["package test;"
-       "import android.os.Parcelable;"
-       "import android.os.Parcelable.Creator;"
        "import android.os.Parcel;"
+       "import javax.annotation.Generated;"
        "import java.lang.ClassLoader;"
+       "@Generated(\"auto_parcel.AutoParcelExtension\")"
        "final class AutoValue_Test extends $AutoValue_Test {"
        "  private final static ClassLoader CL = AutoValue_Test.class.getClassLoader();"
        "  public AutoValue_Test (java.lang.String f1) {"
@@ -102,6 +73,52 @@
        "  private AutoValue_Test(Parcel in) {"
        "    this("
        "      (java.lang.String) in.readValue(CL)"
+       "    );"
+       "  }"
+       "  public static final Creator<AutoValue_Test> CREATOR = new Creator<AutoValue_Test>() {"
+       "    @Override"
+       "    public AutoValue_Test createFromParcel(Parcel in) {"
+       "      return new AutoValue_Test(in);"
+       "    }"
+       "    @Override"
+       "    public AutoValue_Test[] newArray(int size) {"
+       "      return new AutoValue_Test[size];"
+       "    }"
+       "  };"
+       "}"]]))
+  (testing "multiple properties"
+    (check-compiles
+     ["test.Test"
+      ["package test;"
+       "import com.google.auto.value.AutoValue;"
+       "import android.os.Parcelable;"
+       "import java.util.*;"
+       "@AutoValue abstract class Test implements Parcelable {"
+       "  abstract Map<Double, List<String>> f1();"
+       "  public int describeContents() {return 0;}"
+       "}"]]
+     ["test.AutoValue_Test"
+      ["package test;"
+       "import android.os.Parcel;"
+       "import javax.annotation.Generated;"
+       "import java.lang.ClassLoader;"
+       "@Generated(\"auto_parcel.AutoParcelExtension\")"
+       "final class AutoValue_Test extends $AutoValue_Test {"
+       "  private final static ClassLoader CL = AutoValue_Test.class.getClassLoader();"
+       "  public AutoValue_Test (java.util.Map<java.lang.Double, java.util.List<java.lang.String>> f1) {"
+       "    super(f1);"
+       "  }"
+       "  @Override"
+       "  public int describeContents() {"
+       "    return 0;"
+       "  }"
+       "  @Override"
+       "  public void writeToParcel(Parcel dest, int flags) {"
+       "    dest.writeValue(f1());"
+       "  }"
+       "  private AutoValue_Test(Parcel in) {"
+       "    this("
+       "      (java.util.Map<java.lang.Double, java.util.List<java.lang.String>>) in.readValue(CL)"
        "    );"
        "  }"
        "  public static final Creator<AutoValue_Test> CREATOR = new Creator<AutoValue_Test>() {"

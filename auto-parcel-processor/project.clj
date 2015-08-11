@@ -1,4 +1,4 @@
-(defproject frankiesardo/auto-parcel "1.0.0-SNAPSHOT"
+(defproject frankiesardo/auto-parcel "1.0-SNAPSHOT"
   :description "Parcelable extension for AutoValue"
   :url "https://github.com/frankiesardo/auto-parcel"
   :license {:name "Eclipse Public License"
@@ -6,10 +6,7 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [com.google.auto.value/auto-value "1.2-SNAPSHOT"]
                  [com.google.auto.service/auto-service "1.0-rc2"]
-
-                 [org.apache.commons/commons-lang3 "3.4"]
-                 [com.google.auto/auto-common "0.4"]
-                 [com.squareup/javapoet "1.1.0"]
+                 [javax.annotation/jsr250-api "1.0"]
 
                  [stencil "0.3.5"]]
     :release-tasks [["vcs" "assert-committed"]
