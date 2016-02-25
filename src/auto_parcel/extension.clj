@@ -5,10 +5,9 @@
   "package {{& package}};
 
 import android.os.Parcel;
-import javax.annotation.Generated;
+import android.os.Parcelable;
 import java.lang.ClassLoader;
 
-@Generated(\"auto_parcel.AutoParcelExtension\")
 final class {{& class-name}} extends {{& class-to-extend}} {
 
   private final static ClassLoader CL = {{& class-name}}.class.getClassLoader();
@@ -45,7 +44,7 @@ final class {{& class-name}} extends {{& class-to-extend}} {
     );
   }
 
-  public static final Creator<{{& class-name}}> CREATOR = new Creator<{{& class-name}}>() {
+  public static final Parcelable.Creator<{{& class-name}}> CREATOR = new Parcelable.Creator<{{& class-name}}>() {
     @Override
     public {{& class-name}} createFromParcel(Parcel in) {
       return new {{& class-name}}(in);
@@ -69,7 +68,6 @@ final class {{& class-name}} extends {{& class-to-extend}} {
   (mustache/render-string template skeleton))
 
 (defn process [context class-name class-to-extend final?]
-  #_(binding [x (.processingEnvironment context)])
   (let [skeleton {:package (.packageName context)
                   :class-name class-name
                   :class-to-extend class-to-extend

@@ -7,3 +7,9 @@ pom.xml.asc
 *.class
 /.lein-*
 /.nrepl-port
+/logs
+.DS_Store
+
+.idea
+*.iml
+project.clj
