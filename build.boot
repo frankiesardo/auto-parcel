@@ -51,9 +51,9 @@
 (task-options!
  pom {:project        'frankiesardo/auto-parcel
       :version        +version+
-      :description    "Sandbox for experiments"
-      :url            "https://github.com/frankiesardo/lab"
-      :scm            {:url "https://github.com/frankiesardo/lab"}
+      :description    "AutoValue extensions that supports Parcelable generation"
+      :url            "https://github.com/frankiesardo/auto-parcel"
+      :scm            {:url "https://github.com/frankiesardo/auto-parcel"}
       :license        {"Eclipse Public License" "http://www.eclipse.org/legal/epl-v10.html"}})
 
 (deftask build []
