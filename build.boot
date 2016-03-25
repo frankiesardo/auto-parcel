@@ -12,7 +12,7 @@
 
    [com.google.android/android "4.1.1.4" :scope "test"]
    [com.google.testing.compile/compile-testing "0.7" :scope "test"]
-   [adzerk/boot-test "1.1.1" :scope "test"]
+   [adzerk/boot-test "1.0.7" :scope "test"]
    [adzerk/bootlaces "0.1.13" :scope "test"]
    ])
 
