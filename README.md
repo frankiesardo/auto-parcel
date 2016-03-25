@@ -1,7 +1,7 @@
 AutoParcel
 ============
 
-[![Build Status](https://secure.travis-ci.org/frankiesardo/auto-parcel.png)](http://travis-ci.org/frankiesardo/auto-parcel)
+[![Build status](https://circleci.com/gh/frankiesardo/auto-parcel.svg?style=shield)](https://circleci.com/gh/frankiesardo/auto-parcel)
 
 AutoParcel is an [AutoValue](https://github.com/google/auto/tree/master/value) extension that enables Parcelable values generation.
 
@@ -26,6 +26,9 @@ As your models evolve you don't need to worry about keeping all the boilerplate 
 
 Download
 --------
+
+[![Clojars Project](http://clojars.org/frankiesardo/auto-parcel/latest-version.svg)](http://clojars.org/frankiesardo/auto-parcel)
+
 
 Use the same dependency qualifier that you would use for AutoValue (e.g. `apt`)
 
@@ -63,5 +66,5 @@ Check out the sample project for a working example.
 Roadmap
 --------
 
-- Dismantle instanceof checks speeding up runtime serialization [ff]
-- Walking up superclasses to ensure the object is Parcelable [gh]
+- Dismantle instanceof checks speeding up runtime serialization [#16](/../../issues/3)
+- Walking up superclasses to ensure the object is Parcelable [#7](/../../issues/3)
