@@ -15,7 +15,7 @@ abstract class Person implements Parcelable {
   abstract Map<Person, Integer> likes();
 
   static Person create(String name, List<Address> addresses, Map<Person, Integer> likes) {
-    return new AutoParcel_SomeModel(name, addresses, likes);
+    return new AutoValue_Person(name, addresses, likes);
   }
 }
 ```
