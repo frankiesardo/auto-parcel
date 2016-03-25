@@ -1,19 +1,19 @@
 machine:
-  java:
-    version:
-      oraclejdk8
   pre:
-    - wget -O bin/boot https://github.com/boot-clj/boot/releases/download/2.2.0/boot.sh
+    - wget -O bin/boot https://github.com/boot-clj/boot-bin/releases/download/2.5.2/boot.sh
     - chmod 755 bin/boot
     - boot -V
   environment:
-    BOOT_JVM_OPTIONS: "-Xmx3g"
+    BOOT_JVM_OPTIONS: "-Xmx2g -XX:MaxPermSize=128m -client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none"
+
 dependencies:
   override:
     - boot show -d
+
 test:
   override:
     - boot test
+
 deployment:
   release:
     tag: /v.*/
