@@ -39,8 +39,7 @@
  '[clojure.string :as str])
 
 (def +version+
-  "1.0.0-SNAPSHOT"
-  #_(let [{:keys [exit out]} (shell/sh "git" "describe" "--tags")
+  (let [{:keys [exit out]} (shell/sh "git" "describe" "--tags")
         tag (second (re-find #"v(.*)\n" out))]
     (if (zero? exit)
       (if (.contains tag "-")
