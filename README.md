@@ -66,5 +66,5 @@ Check out the sample project for a working example.
 Roadmap
 --------
 
-- Dismantle instanceof checks speeding up runtime serialization [#16](/../../issues/3)
-- Walking up superclasses to ensure the object is Parcelable [#7](/../../issues/3)
+- [ ] Dismantle instanceof checks speeding up runtime serialization [#16](/../../issues/16)
+- [ ] Walking up superclasses to ensure the object is Parcelable [#7](/../../issues/7)
