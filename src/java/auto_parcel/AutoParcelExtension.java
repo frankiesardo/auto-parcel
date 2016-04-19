@@ -16,6 +16,10 @@ public class AutoParcelExtension extends AutoValueExtension {
 
     private static IFn PROCESS;
 
+    static {
+        loadClojureFn();
+    }
+
     private static void loadClojureFn() {
         ClassLoader previous = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(AutoParcelExtension.class.getClassLoader());
@@ -28,11 +32,6 @@ public class AutoParcelExtension extends AutoValueExtension {
             Thread.currentThread().setContextClassLoader(previous);
         }
     }
-
-    static {
-        loadClojureFn();
-    }
-
 
     @Override
     public boolean applicable(Context context) {

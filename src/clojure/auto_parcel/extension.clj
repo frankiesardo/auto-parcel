@@ -58,20 +58,21 @@ final class {{& class-name}} extends {{& class-to-extend}} {
 }")
 
 (defn- ->prop [[k v :as prop]]
-  {:name k
+  {:name      k
    :cast-type (.toString (.getReturnType v))})
 
 (defn- add-last? [props]
-  (assoc-in props [(dec (count props)) :last?] true))
+  (cond-> props
+    (not-empty props) (assoc-in [(dec (count props)) :last?] true)))
 
 (defn- generate [skeleton]
   (mustache/render-string template skeleton))
 
 (defn process [context class-name class-to-extend final?]
-  (let [skeleton {:package (.packageName context)
-                  :class-name class-name
+  (let [skeleton {:package         (.packageName context)
+                  :class-name      class-name
                   :class-to-extend class-to-extend
-                  :props (->> (.properties context)
-                              (mapv ->prop)
-                              (add-last?))}]
+                  :props           (->> (.properties context)
+                                        (mapv ->prop)
+                                        (add-last?))}]
     (generate skeleton)))
