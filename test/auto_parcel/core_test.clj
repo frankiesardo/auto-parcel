@@ -44,6 +44,10 @@
            (.generatesSources first (into-array JavaFileObject rest)))))))
 
 (deftest simple
+  (testing "zero properties"
+    (check-compiles
+      "test.zero.Test"
+      "test.zero.AutoValue_Test"))
   (testing "one property"
     (check-compiles
       "test.one.Test"
