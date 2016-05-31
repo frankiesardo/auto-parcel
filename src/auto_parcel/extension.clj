@@ -1,5 +1,5 @@
 (ns auto-parcel.extension
-  (:require [stencil.core :as mustache]))
+    (:require [stencil.core :as mustache]))
 
 (def template
   "package {{& package}};
@@ -58,21 +58,21 @@ final class {{& class-name}} extends {{& class-to-extend}} {
 }")
 
 (defn- ->prop [[k v :as prop]]
-  {:name      k
-   :cast-type (.toString (.getReturnType v))})
+       {:name      k
+        :cast-type (.toString (.getReturnType v))})
 
 (defn- add-last? [props]
-  (cond-> props
-    (not-empty props) (assoc-in [(dec (count props)) :last?] true)))
+       (cond-> props
+               (not-empty props) (assoc-in [(dec (count props)) :last?] true)))
 
 (defn- generate [skeleton]
-  (mustache/render-string template skeleton))
+       (mustache/render-string template skeleton))
 
 (defn process [context class-name class-to-extend final?]
-  (let [skeleton {:package         (.packageName context)
-                  :class-name      class-name
-                  :class-to-extend class-to-extend
-                  :props           (->> (.properties context)
-                                        (mapv ->prop)
-                                        (add-last?))}]
-    (generate skeleton)))
+      (let [skeleton {:package         (.packageName context)
+                      :class-name      class-name
+                      :class-to-extend class-to-extend
+                      :props           (->> (.properties context)
+                                            (mapv ->prop)
+                                            (add-last?))}]
+           (generate skeleton)))

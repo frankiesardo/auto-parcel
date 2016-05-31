@@ -1,5 +1,5 @@
 (set-env!
- :resource-paths   #{"src/java" "src/clojure"}
+ :resource-paths   #{"src"}
  :dependencies
  '[[org.clojure/clojure "1.7.0"]
    [com.google.auto.value/auto-value "1.2-rc1"]
